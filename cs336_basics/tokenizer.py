@@ -61,7 +61,11 @@ class Tokenizer:
                 case NormalToken(text = s):
                     list_of_bytes += [bytes([byte]) for byte in s.encode("utf-8")]
                 case SpecialToken(text = s):
-                    list_of_bytes.append(bytes([s.encode("utf-8")]))
+                    b = s.encode("utf-8")
+                    if isinstance(b, bytes):
+                        list_of_bytes.append(b)
+                    else:
+                        list_of_bytes.append(bytes([b]))
 
         # TODO: could refactor into new function
         for x, y in self.merges:
@@ -102,4 +106,6 @@ class Tokenizer:
         bytes = b""
         for id in ids:
             bytes += self.vocab.get(id)
-        return bytes.decode("utf-8")
+        
+        return bytes.decode("utf-8", errors="replace")
+    
