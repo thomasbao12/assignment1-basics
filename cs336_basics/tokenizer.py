@@ -25,7 +25,10 @@ class Tokenizer:
     ):
         self.vocab = vocab 
         self.merges = merges 
-        
+        self.merge_pairs_to_ranks = {
+            merge_pair: rank 
+            for rank, merge_pair in enumerate(self.merges)
+        }
 
         self.bytes_to_id = {}
         for id, b in vocab.items():
@@ -72,35 +75,30 @@ class Tokenizer:
         return tokens
     
     def _encode_bytes(self, list_of_bytes: list[bytes]) -> list[int]:
-        for x, y in self.merges:
-            new_list_of_bytes: list[bytes] = []
-            i = 0
-            n = len(list_of_bytes)
-            # TODO: could refactor into new function
-            while i < n:
-                if list_of_bytes[i] in self.special_bytes:
-                    new_list_of_bytes.append(list_of_bytes[i])
-                    i += 1
-                    continue 
-                if i == n - 1:
-                    new_list_of_bytes.append(list_of_bytes[i])
-                    i += 1
-                    continue
-                
-                a, b = list_of_bytes[i], list_of_bytes[i + 1]
-                if (x, y) == (a, b):
-                    new_list_of_bytes.append(
-                        a + b
-                    )
-                    i += 2
-                else:
-                    new_list_of_bytes.append(a)
-                    i += 1
-                
-            list_of_bytes = new_list_of_bytes
-
+        parts = list_of_bytes
+        while len(parts) >= 2:
+            best_rank = None
+            best_idx = None 
+            for i in range(len(parts) - 1):
+                x, y = parts[i], parts[i + 1]
+                rank = self.merge_pairs_to_ranks.get((x, y))
+                if rank and (best_rank == None or rank < best_rank):
+                    best_rank = rank 
+                    best_idx = i 
+            
+            if best_idx == None:
+                break 
+            
+            parts = parts[:best_idx] + [
+                b''.join([
+                    parts[best_idx], 
+                    parts[best_idx + 1]
+                ])
+            ] + parts[best_idx + 2:]
+            
+        
         ids = list()
-        for b in list_of_bytes:
+        for b in parts:
             ids.append(
                 self.bytes_to_id[b]
             )
