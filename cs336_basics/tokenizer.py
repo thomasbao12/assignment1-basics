@@ -125,7 +125,8 @@ class Tokenizer:
         return ids
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
-        raise NotImplementedError()
+        for text in iterable:
+            yield from self.encode(text)
     
     def decode(self, ids: list[int]) -> str:
         bytes = b""
