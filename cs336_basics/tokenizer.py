@@ -82,7 +82,7 @@ class Tokenizer:
             for i in range(len(parts) - 1):
                 x, y = parts[i], parts[i + 1]
                 rank = self.merge_pairs_to_ranks.get((x, y))
-                if rank and (best_rank == None or rank < best_rank):
+                if rank is not None and (best_rank is None or rank < best_rank):
                     best_rank = rank 
                     best_idx = i 
             
