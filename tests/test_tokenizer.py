@@ -428,10 +428,10 @@ def test_encode_iterable_memory_usage():
             ids.append(_id)
 
 
-@pytest.mark.skipif(
-    not sys.platform.startswith("linux"),
-    reason="rlimit support for non-linux systems is spotty.",
-)
+#@pytest.mark.skipif(
+#    not sys.platform.startswith("linux"),
+#    reason="rlimit support for non-linux systems is spotty.",
+#)
 @pytest.mark.xfail(reason="Tokenizer.encode is expected to take more memory than allotted (1MB).")
 def test_encode_memory_usage():
     """
