@@ -1,7 +1,7 @@
 from collections import defaultdict
 from cs336_basics.tokenizer import (
     encode_part_into_bytes, 
-    merge_pair,
+    _merge_pair,
     split_into_parts_and_pretokenize
 )
 
@@ -19,21 +19,37 @@ def train_bpe(
     special_tokens: list[str]
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     vocab = {
-        i: bytes(i)
+        i: bytes([i])
         for i in range(256)
     }
+    for special_token in special_tokens:
+        vocab[len(vocab)] = special_token.encode('utf-8')
 
     # todo support multiprocessing with chunking
     merges = []
     with open(input_path) as f:
         text = f.read()
-        parts = split_into_parts_and_pretokenize(text)
-        for part in parts:
-            list_of_bytes = encode_part_into_bytes(part)
-            merge_pairs_to_ranks = get_merge_pairs_to_ranks(list_of_bytes)
-            list_of_bytes, merged = merge_pair(list_of_bytes, merge_pairs_to_ranks)
-            if not merged:
-                break
-            merges.append(merged)
-            vocab[len(vocab)] = merged
+        parts = [
+            encode_part_into_bytes(part)
+            for part in split_into_parts_and_pretokenize(text, special_tokens)
+        ]
+        
+        while len(vocab) < vocab_size:
+            merge_pairs_to_count: dict[tuple[bytes, bytes], int] = dict()
+            for part in parts:
+                for k, v in get_merge_pairs_to_ranks(part).items():
+                    merge_pairs_to_count[k] = merge_pairs_to_count.get(k, 0) + v
+            max_count, max_merge = max([
+                (count, merge_pair)
+                for merge_pair, count in merge_pairs_to_count.items()
+            ])
+            if max_count == 0:
+                break 
+            for i, part in enumerate(parts):
+                part = _merge_pair(part, max_merge)
+                parts[i] = part
+                
+            merges.append(max_merge)
+            vocab[len(vocab)] = b''.join(max_merge)
+    
     return (vocab, merges)
