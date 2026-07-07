@@ -4,7 +4,6 @@ from cs336_basics.tokenizer import (
     _merge_pair,
     split_into_parts_and_pretokenize
 )
-from sortedcontainers import SortedDict
 
 import cProfile
 import pstats
