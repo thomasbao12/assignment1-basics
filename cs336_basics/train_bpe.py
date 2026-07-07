@@ -132,6 +132,8 @@ class BPE:
             if l < len(self.parts[i]):
                 pairs_of_positions.add(((i, k), (i, l)))
         for (i1, j1), (i2,j2) in pairs_of_positions:
+            print(f'{i1, j1}, {i2,j2}')
+            print(self.position_to_bytes)
             a = self.position_to_bytes[i1][j1]
             b = self.position_to_bytes[i2][j2]
             self.bytes_pair_to_counts[a,b] -= 1
