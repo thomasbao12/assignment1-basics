@@ -6,6 +6,9 @@ from cs336_basics.tokenizer import (
 )
 from sortedcontainers import SortedDict
 
+import cProfile
+import pstats
+
 def get_merge_pairs_to_ranks(list_of_bytes: list[bytes]) -> dict[tuple[bytes, bytes],int]:
     potential_merges = defaultdict(int)
     for i in range(0, len(list_of_bytes) - 1):
@@ -18,6 +21,7 @@ def get_merge_pairs_to_ranks(list_of_bytes: list[bytes]) -> dict[tuple[bytes, by
 # index merge pairs
 
 class BPE:
+    DEBUG = False
     '''
     invariants: 
     - bytes to positions and position to bytes are inverse dictionaries
@@ -26,21 +30,20 @@ class BPE:
     '''
     
     def _assert_position_to_bytes_is_equivalent_to_parts(self):
-        for i, part in enumerate(parts):
+        for i, part in enumerate(self.parts):
             reconstructed_part = list()
-            for (i_copy, j), value in sorted(self.position_to_bytes.items()):
-                if i != i_copy:
-                    break
+            for _, value in sorted(self.position_to_bytes[i].items()):
                 reconstructed_part.append(value)
             assert b''.join(part) == b''.join(reconstructed_part), f'{part} != {reconstructed_part}'
     
     def _assert_position_to_bytes_equivalent_to_bytes_to_position(self):
         for b, positions in self.bytes_to_positions.items():
-            for p in positions:
-                assert self.position_to_bytes[p] == b
+            for (i, j) in positions:
+                assert self.position_to_bytes[i][j] == b
 
-        for p, b in self.position_to_bytes.items():
-            assert p in self.bytes_to_positions[b]
+        for i, v in self.position_to_bytes.items():
+            for j, b in self.position_to_bytes[i].items():
+                assert (i,j) in self.bytes_to_positions[b]
 
     def __init__(self, vocab: dict[int, bytes], parts: list[list[bytes]]):
         self.parts = parts
@@ -49,7 +52,7 @@ class BPE:
         
         self.bytes_to_positions: dict[bytes, set] = defaultdict(set)
         # when sorted and merged, this should be equivalent to parts
-        self.position_to_bytes: dict[tuple[int, int], bytes] = SortedDict()
+        self.position_to_bytes: dict[int, dict[int, bytes]] = defaultdict(dict)
         self.bytes_pair_to_counts: dict[tuple(bytes, bytes), int] = defaultdict(int)
 
         for i, list_of_bytes in enumerate(self.parts):
@@ -57,13 +60,17 @@ class BPE:
                 x, y = list_of_bytes[j], list_of_bytes[j + 1]
                 self.bytes_pair_to_counts[(x, y)] += 1
                 self.bytes_to_positions[x].add((i, j))
-                self.position_to_bytes[(i,j)] = list_of_bytes[j]
+                self.position_to_bytes[i][j] = list_of_bytes[j]
             if len(list_of_bytes) > 0:
                 j = len(list_of_bytes) - 1
                 self.bytes_to_positions[list_of_bytes[j]].add((i, j))
-                self.position_to_bytes[(i,j)] = list_of_bytes[j]
-        self._assert_position_to_bytes_is_equivalent_to_parts()
-        self._assert_position_to_bytes_equivalent_to_bytes_to_position()
+                self.position_to_bytes[i][j] = list_of_bytes[j]
+
+        if BPE.DEBUG:
+            print("init: about to assert")
+            self._assert_position_to_bytes_equivalent_to_bytes_to_position()
+            self._assert_position_to_bytes_is_equivalent_to_parts()
+            print("init: passed asserts")
     
     # what if merged bytes are the SAME!?
     '''
@@ -120,7 +127,7 @@ class BPE:
                 continue
             
             k = j + len(x)
-            if k < len(parts[i]) and self.position_to_bytes[(i,k)] == y:
+            if k < len(self.parts[i]) and self.position_to_bytes[(i,k)] == y:
                 self.bytes_to_positions[merged_bytes].add((i, j))
                 bytes_and_positions_to_delete.append((x, (i,j)))
                 bytes_and_positions_to_delete.append((y, (i,k)))
@@ -132,11 +139,9 @@ class BPE:
         for (b, (i, j)) in bytes_and_positions_to_delete:
             self.bytes_to_positions[b].remove((i, j))
 
-        
-
-        self._assert_position_to_bytes_is_equivalent_to_parts()
-        self._assert_position_to_bytes_equivalent_to_bytes_to_position()
-            
+        if BPE.DEBUG:
+            self._assert_position_to_bytes_is_equivalent_to_parts()
+            self._assert_position_to_bytes_equivalent_to_bytes_to_position()            
 
         # increment byte pair counts affected by the merge after merging
         # merged bytes could be consecutive, so we want to avoid double counting
@@ -182,34 +187,31 @@ def train_bpe(
         vocab[len(vocab)] = special_token.encode('utf-8')
 
     # todo support multiprocessing with chunking
-    merges = []
     with open(input_path) as f:
         text = f.read()
         parts = [
             encode_part_into_bytes(part)
             for part in split_into_parts_and_pretokenize(text, special_tokens)
         ]
+        if BPE.DEBUG:
+            profiler = cProfile.Profile()
+            profiler.enable()
         
-        while len(vocab) < vocab_size:
-            merge_pairs_to_count: dict[tuple[bytes, bytes], int] = dict()
-            for part in parts:
-                for k, v in get_merge_pairs_to_ranks(part).items():
-                    merge_pairs_to_count[k] = merge_pairs_to_count.get(k, 0) + v
-            max_count, max_merge = max([
-                (count, merge_pair)
-                for merge_pair, count in merge_pairs_to_count.items()
-            ])
-            if max_count == 0:
-                break 
-            for i, part in enumerate(parts):
-                # TODO merge_pairs should return which pairs it merged?
-                part = _merge_pair(part, max_merge)
-                parts[i] = part
-                
-            merges.append(max_merge)
-            vocab[len(vocab)] = b''.join(max_merge)
+        bpe = BPE(vocab, parts)
+        while len(bpe.vocab) < vocab_size:
+            did_merge = bpe.merge_dry_run()
+            if not did_merge:
+                break
+        
+
+    if BPE.DEBUG:
+        profiler.disable()
+        stats = pstats.Stats(profiler)
+        stats.sort_stats("cumulative")
+        stats.print_stats(20)
     
-    return (vocab, merges)
+    
+    return (bpe.vocab, bpe.merged)
 
 if __name__ == "__main__":
     parts = [[
@@ -232,4 +234,4 @@ if __name__ == "__main__":
     bpe.merge_dry_run()
     bpe.merge_dry_run()
     bpe.merge_dry_run()
-    print(bpe.position_to_bytes)
+    
