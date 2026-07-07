@@ -31,7 +31,6 @@ def test_train_bpe():
         vocab_size=500,
         special_tokens=["<|endoftext|>"],
     )
-
     # Path to the reference tokenizer vocab and merges
     reference_vocab_path = FIXTURES_PATH / "train-bpe-reference-vocab.json"
     reference_merges_path = FIXTURES_PATH / "train-bpe-reference-merges.txt"
@@ -58,6 +57,7 @@ def test_train_bpe():
         }
     # Rather than checking that the vocabs exactly match (since they could
     # have been constructed differently), we'll make sure that the vocab keys and values match
+    
     assert set(vocab.keys()) == set(reference_vocab.keys())
     assert set(vocab.values()) == set(reference_vocab.values())
 
