@@ -20,20 +20,25 @@ def get_merge_pairs_to_ranks(list_of_bytes: list[bytes]) -> dict[tuple[bytes, by
 # index merge pairs
 
 class BPE:
-    DEBUG = False
+    DEBUG = True
     '''
     invariants: 
     - bytes to positions and position to bytes are inverse dictionaries
     - we should be able to reconstruct each part from the correspond position to bytes
     - byte counts individually of the bytes_pair_to_counts should equal the byte counts of parts
     '''
-    
+
     def _assert_position_to_bytes_is_equivalent_to_parts(self):
         for i, part in enumerate(self.parts):
             reconstructed_part = list()
-            for _, value in sorted(self.position_to_bytes[i].items()):
+            sorted_items = sorted(self.position_to_bytes[i].items())
+            for _, value in sorted_items:
                 reconstructed_part.append(value)
             assert b''.join(part) == b''.join(reconstructed_part), f'{part} != {reconstructed_part}'
+            for i in range(len(sorted_items) - 1):
+                (index, byte_str) = sorted_items[i]
+                next_index, _ = sorted_items[i + 1]
+                assert index + len(byte_str) == next_index
     
     def _assert_position_to_bytes_equivalent_to_bytes_to_position(self):
         for b, positions in self.bytes_to_positions.items():
@@ -46,9 +51,11 @@ class BPE:
     
     def _assert_merge_is_merged(self, merge_pair: tuple[bytes, bytes]):
         for i in self.position_to_bytes.keys():
-            for j, b in self.position_to_bytes[i].items():
-                if j + 1 < len(self.position_to_bytes[i]):
-                    assert (self.position_to_bytes[i][j], self.position_to_bytes[i][j + 1]) != merge_pair
+            sorted_items = sorted(self.position_to_bytes[i].items())
+            for j in range(len(sorted_items) - 1):
+                (_, b1), (_, b2) = sorted_items[j], sorted_items[j + 1]
+                assert (b1, b2) != merge_pair, f"i={i}: {sorted_items}"
+
 
     def __init__(self, vocab: dict[int, bytes], parts: list[list[bytes]]):
         self.parts = parts
@@ -84,6 +91,12 @@ class BPE:
     then update position_to_bytes/bytes_to_position on merged_bytes
     finally increment byte_pairs_to_counts on merged_bytes
     '''
+    def _find_previous_position(self, i: int, j: int) -> int:
+        valid_positions = self.position_to_bytes[i].keys()
+        h = j - 1
+        while h > 0 and h not in valid_positions:
+            h -= 1
+        return h
     def merge_dry_run(self) -> bool:
         # TODO use sorted dict
         max_count, max_merge = max([
@@ -102,15 +115,18 @@ class BPE:
         for (i, j) in self.bytes_to_positions[x]:
             k = j + len(x)
             
-            if k >= len(self.parts[i]) or self.position_to_bytes[i][k] != y:
-                continue 
-            pairs_of_positions.add(((i, j), (i, k)))
+            if self.position_to_bytes[i].get(k) == y:
+                pairs_of_positions.add((
+                    (i, j),
+                    (i, k)
+                ))
 
-            h = j - 1
-            while h > 0 and h not in self.position_to_bytes[i].keys():
-                h = h - 1
+            h = self._find_previous_position(i, j)
             if h >= 0:
-                pairs_of_positions.add(((i, h), (i, j)))
+                pairs_of_positions.add((
+                    (i, h),
+                    (i, j)
+                ))
                          
             l = j + len(x) + len(y)
             if l < len(self.parts[i]):
@@ -127,20 +143,20 @@ class BPE:
 
         # update bytes_to_positions and positions_to_bytes
         bytes_and_positions_to_delete: tuple[bytes, tuple[int, int]] = []
-        last_merge_boundary = -1
+        last_merge_boundary = (-1, -1)
         for (i, j) in sorted(self.bytes_to_positions[x]):
-            if j == last_merge_boundary:
+            if (i, j) == last_merge_boundary:
                 continue
             
             k = j + len(x)
-            if k < len(self.parts[i]) and self.position_to_bytes[i][k] == y:
+            if self.position_to_bytes[i].get(k) == y:
                 self.bytes_to_positions[merged_bytes].add((i, j))
                 bytes_and_positions_to_delete.append((x, (i,j)))
                 bytes_and_positions_to_delete.append((y, (i,k)))
                 
                 self.position_to_bytes[i][j] = merged_bytes 
                 del self.position_to_bytes[i][j + len(x)] 
-                last_merge_boundary = j + len(x)
+                last_merge_boundary = i, j + len(x)
         
         for (b, (i, j)) in bytes_and_positions_to_delete:
             self.bytes_to_positions[b].remove((i, j))
@@ -149,6 +165,7 @@ class BPE:
             print("merge_dry_run: about to assert")
             self._assert_position_to_bytes_is_equivalent_to_parts()
             self._assert_position_to_bytes_equivalent_to_bytes_to_position()            
+            self._assert_merge_is_merged(max_merge)
             print("merge_dry_run: passed assert")
 
         # increment byte pair counts affected by the merge after merging
@@ -160,23 +177,14 @@ class BPE:
             if k < len(self.parts[i]):
                 pairs_of_positions.add(((i, j), (i, k)))                
             
-            h = j - 1
-            while h > 0 and h not in self.position_to_bytes.keys():
-                h = h - 1
+            h = self._find_previous_position(i, j)
             if h >= 0:
                 pairs_of_positions.add(((i, h), (i, j)))
         for (i1, j1), (i2, j2) in pairs_of_positions:
-            print(self.position_to_bytes[i1])
-            print(f"{i1, j1}, {i2, j2}")
             self.bytes_pair_to_counts[(
                 self.position_to_bytes[i1][j1],
                 self.position_to_bytes[i2][j2]
             )] += 1
-        
-        if BPE.DEBUG:
-            print("merge_dry_run: checking if merged")
-            self._assert_merge_is_merged(max_merge)
-            print("merge_dry_run: merged success")
 
         return True 
 
