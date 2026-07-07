@@ -120,6 +120,10 @@ class BPE:
                     (i, j),
                     (i, k)
                 ))
+                # check if we need to update the position after the merged bytes
+                l = j + len(x) + len(y)
+                if l < len(self.parts[i]):
+                    pairs_of_positions.add(((i, k), (i, l)))
 
             h = self._find_previous_position(i, j)
             if h >= 0:
@@ -128,12 +132,8 @@ class BPE:
                     (i, j)
                 ))
                          
-            l = j + len(x) + len(y)
-            if l < len(self.parts[i]):
-                pairs_of_positions.add(((i, k), (i, l)))
+            
         for (i1, j1), (i2,j2) in pairs_of_positions:
-            print(f'{i1, j1}, {i2,j2}')
-            print(self.position_to_bytes)
             a = self.position_to_bytes[i1][j1]
             b = self.position_to_bytes[i2][j2]
             self.bytes_pair_to_counts[a,b] -= 1
