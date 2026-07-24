@@ -9,6 +9,7 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
 from cs336_basics.rmsnorm import RMSNorm
@@ -212,7 +213,10 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    roPE = RoPE(theta, d_k, max_seq_len)
+    result = roPE.forward(in_query_or_key, token_positions)
+
+    return result
 
 
 def run_transformer_block(
