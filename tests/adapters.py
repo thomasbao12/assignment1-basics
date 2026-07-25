@@ -4,6 +4,7 @@ import os
 from collections.abc import Iterable
 from typing import IO, Any, BinaryIO
 
+import einops
 import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
@@ -117,6 +118,25 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
+    d_k = Q.shape[-1]
+    scaled_dot = einops.einsum(
+        Q,
+        K,
+        "... queries d_k, ... keys d_k -> ... queries keys"
+    ) / d_k ** 0.5
+    masked = torch.where(
+        mask,
+        scaled_dot,
+        torch.tensor(
+            float("-inf")
+        )
+    )
+    softmax = run_softmax(masked, -1)
+    return einops.einsum(
+        softmax,
+        V,
+        "... queries keys, ... keys d_v -> ... queries d_v"
+    )
     raise NotImplementedError
 
 
