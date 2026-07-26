@@ -411,7 +411,45 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    batch_size, seq_len = in_features.shape[:-1]
+
+    token_positions = torch.arange(
+        seq_len,
+    ).expand(batch_size, seq_len)
+
+    rms_norm1 = run_rmsnorm(
+        d_model,
+        eps=1e-5,
+        weights=weights["ln1.weight"],
+        in_features=in_features,
+    )
+    mha = run_multihead_self_attention_with_rope(
+        d_model,
+        num_heads,
+        max_seq_len,
+        theta,
+        weights["attn.q_proj.weight"],
+        weights["attn.k_proj.weight"],
+        weights["attn.v_proj.weight"],
+        weights["attn.output_proj.weight"],
+        rms_norm1,
+        token_positions
+    )
+    rms_norm2 = run_rmsnorm(
+        d_model,
+        eps=1e-5,
+        weights=weights["ln2.weight"],
+        in_features=in_features + mha
+    )
+    ff = run_swiglu(
+        d_model,
+        d_ff,
+        weights["ffn.w1.weight"],
+        weights["ffn.w2.weight"],
+        weights["ffn.w3.weight"],
+        rms_norm2
+    )
+    return in_features + mha + ff
 
 
 def run_transformer_lm(
@@ -498,7 +536,7 @@ def run_transformer_lm(
 
 def run_rmsnorm(
     d_model: int,
-    eps: float,
+    eps: float | None,
     weights: Float[Tensor, " d_model"],
     in_features: Float[Tensor, " ... d_model"],
 ) -> Float[Tensor, " ... d_model"]:
@@ -516,7 +554,10 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    rms_norm = RMSNorm(d_model, eps)
+    if eps is None:
+        rms_norm = RMSNorm(d_model)
+    else: 
+        rms_norm = RMSNorm(d_model, eps)
     rms_norm.load_state_dict({
         'weights': weights
     })
