@@ -124,9 +124,9 @@ def run_scaled_dot_product_attention(
         K,
         "... queries d_k, ... keys d_k -> ... queries keys"
     ) / d_k ** 0.5
-    if mask == None:
-        ones = torch.ones(scaled_dot.transpose(-2, -1).shape, dtype=torch.bool)
-        mask = torch.triu(ones).transpose(-2, -1)
+    if mask is None:
+        ones = torch.ones(scaled_dot.shape, dtype=torch.bool)
+        mask = torch.tril(ones)
 
     masked = torch.where(
         mask,
