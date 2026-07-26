@@ -233,7 +233,7 @@ def run_multihead_self_attention_with_rope(
     implementation of multi-head attention, return the output of an optimized batched
     implementation. This implementation should handle the key, query, and value projections
     for all heads in a single matrix multiply.
-    This version of MHA should include RoPE.
+    This version of MHA should include RoPE.    
     In this case, the RoPE embedding dimension must be the head embedding dimension (d_model // num_heads).
     See section 3.2.2 of Vaswani et al., 2017.
 
@@ -253,7 +253,67 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    d_k = d_model // num_heads
+    multihead_token_positions = einops.repeat(
+        token_positions,
+        "... sequence_length -> ... num_heads sequence_length",
+        num_heads=num_heads
+    )
+
+    q = einops.einsum(
+        in_features,
+        q_proj_weight,
+        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
+    )
+    multihead_q = einops.rearrange(
+        q,
+        "... sequence_length (num_heads d_q) -> ... num_heads sequence_length d_q",
+        num_heads = num_heads
+    )
+    rotated_multihead_q = run_rope(
+        d_k,
+        theta,
+        max_seq_len,
+        multihead_q,
+        multihead_token_positions,
+    )
+    k = einops.einsum(
+        in_features,
+        k_proj_weight,
+        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
+    )
+    multihead_k = einops.rearrange(
+        k,
+        "... sequence_length (num_heads d_k) -> ... num_heads sequence_length d_k",
+        num_heads = num_heads
+    )
+    rotated_multihead_k = run_rope(
+            d_k,
+            theta,
+            max_seq_len,
+            multihead_k,
+            multihead_token_positions,
+        )
+    v = einops.einsum(
+        in_features,
+        v_proj_weight,
+        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
+    )
+    multihead_v = einops.rearrange(
+        v,
+        "... sequence_length (num_heads d_v) -> ... num_heads sequence_length d_v",
+        num_heads = num_heads
+    )
+    multihead_attention = run_scaled_dot_product_attention(rotated_multihead_q, rotated_multihead_k, multihead_v)
+    rearranged_multihead_attention = einops.rearrange(
+        multihead_attention,
+        "... num_heads sequence_length d_v -> ... sequence_length (num_heads d_v)"
+    )
+    return einops.einsum(
+        rearranged_multihead_attention,
+        o_proj_weight,
+        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
+    )
 
 
 def run_rope(

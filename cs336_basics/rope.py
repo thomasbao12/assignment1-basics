@@ -22,7 +22,7 @@ class RoPE(torch.nn.Module):
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         k = torch.arange(0, self.d_k // 2, device = self.device)
         frequencies = 1 / self.theta ** (2 * k / self.d_k) # shape(pairs)
-        angles = token_positions[:, None] * frequencies[None, :] # shape(seq, pairs)
+        angles = token_positions[..., None] * frequencies[None, :] # shape(seq, pairs)
         cos = angles.cos() # shape(seq, pairs)
         sin = angles.sin() # shape(seq, pairs)
         rotation_matrices = torch.stack(
@@ -40,7 +40,7 @@ class RoPE(torch.nn.Module):
         rotated_x_pairs = einops.einsum(
             x_pairs,
             rotation_matrices,
-            "... seq pairs two, seq pairs rows two  -> ... seq pairs rows"
+            "... seq pairs two, ... seq pairs rows two  -> ... seq pairs rows"
         )
         return einops.rearrange(
             rotated_x_pairs,
