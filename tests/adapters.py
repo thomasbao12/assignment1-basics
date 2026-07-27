@@ -531,7 +531,41 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    embeddings = run_embedding(
+        vocab_size,
+        d_model,
+        weights["token_embeddings.weight"], 
+        in_indices,
+    )
+    layer_input = embeddings
+    for layer in range(num_layers):
+        prefix = f"layers.{layer}."
+        prefix_len = len(prefix)
+        layer_weights = {}
+        for k, v in weights.items():
+            if k.startswith(prefix):
+                layer_weights[ k[prefix_len:] ] = v
+        layer_input = run_transformer_block(
+            d_model,
+            num_heads,
+            d_ff,
+            context_length,
+            rope_theta,
+            layer_weights,
+            layer_input
+        )
+    last_norm = run_rmsnorm(
+        d_model,
+        1e-5,
+        weights["ln_final.weight"],
+        layer_input
+    )
+    return run_linear(
+        d_model,
+        vocab_size,
+        weights['lm_head.weight'],
+        last_norm
+    )
 
 
 def run_rmsnorm(
