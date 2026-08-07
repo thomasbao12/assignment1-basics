@@ -29,6 +29,12 @@ class SGD(torch.optim.Optimizer):
 
 if __name__ == "__main__":
     weights = torch.nn.Parameter(5 * torch.randn((10, 10)))
+    '''
+    Exercise: Try lr for 1, 1e1, 1e2, and 1e3
+    Observation:
+    With a learning rate of 1e1, the loss decayed faster and reached about 0.01; 
+    with 1e2, it decayed even faster and reached 0. With 1e3, the loss diverged to infinity.
+    '''
     opt = SGD([weights], lr=1e3)
 
     for t in range(100):
