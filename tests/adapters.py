@@ -641,7 +641,7 @@ def run_get_batch(
     input_sequences = torch.stack([
         torch.from_numpy(dataset[i : i + context_length])
         for i in indices
-    ])
+    ]).to(device)
     output_sequences = input_sequences + 1
     return (input_sequences, output_sequences)
 
@@ -775,7 +775,12 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    obj = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "iteration": iteration
+    }
+    torch.save(obj, out)
 
 
 def run_load_checkpoint(
@@ -796,8 +801,10 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
-
+    obj = torch.load(src)
+    model.load_state_dict(obj["model_state_dict"])
+    optimizer.load_state_dict(obj["optimizer_state_dict"])
+    return obj["iteration"]
 
 def get_tokenizer(
     vocab: dict[int, bytes],
