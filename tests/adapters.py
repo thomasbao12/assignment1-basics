@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from typing import IO, Any, BinaryIO
 
 import einops
+import math
 import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
@@ -724,7 +725,13 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    if it < warmup_iters:
+        return it / warmup_iters * max_learning_rate
+    elif it <= cosine_cycle_iters:
+        radians = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters) * math.pi
+        return min_learning_rate + 0.5 * (1 + math.cos(radians)) * (max_learning_rate - min_learning_rate)
+    else:
+        return min_learning_rate
 
 
 def run_save_checkpoint(
