@@ -73,7 +73,14 @@ class BPE:
             assert v == byte_pair_counts[k]
 
 
-    def __init__(self, vocab: dict[int, bytes], parts: list[list[bytes]]):
+    def __init__(
+        self,
+        vocab: dict[int, bytes] = {
+            i: bytes([i])
+            for i in range(256)
+        },
+        parts: list[list[bytes]] = []
+    ):
         self.parts = parts
         self.merged = []
         self.vocab = vocab 
