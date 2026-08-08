@@ -6,6 +6,7 @@ from typing import IO, Any, BinaryIO
 
 import einops
 import math
+import numpy as np
 import numpy.typing as npt
 import torch
 from jaxtyping import Bool, Float, Int
@@ -635,7 +636,14 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    n = len(dataset)
+    indices = np.random.randint(low = 0, high = n - context_length, size = batch_size)
+    input_sequences = torch.stack([
+        torch.from_numpy(dataset[i : i + context_length])
+        for i in indices
+    ])
+    output_sequences = input_sequences + 1
+    return (input_sequences, output_sequences)
 
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
