@@ -13,6 +13,7 @@ from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from cs336_basics.adamw import AdamW
+from cs336_basics.attention import Attention
 from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
@@ -123,29 +124,7 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    d_k = Q.shape[-1]
-    scaled_dot = einops.einsum(
-        Q,
-        K,
-        "... queries d_k, ... keys d_k -> ... queries keys"
-    ) / d_k ** 0.5
-    if mask is None:
-        ones = torch.ones(scaled_dot.shape, dtype=torch.bool)
-        mask = torch.tril(ones)
-
-    masked = torch.where(
-        mask,
-        scaled_dot,
-        torch.tensor(
-            float("-inf")
-        )
-    )
-    softmax = run_softmax(masked, -1)
-    return einops.einsum(
-        softmax,
-        V,
-        "... queries keys, ... keys d_v -> ... queries d_v"
-    )
+    return utils.run_scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -179,36 +158,12 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    q = einops.einsum(
-        in_features,
-        q_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_q = einops.rearrange(
-        q,
-        "... sequence_length (num_heads d_q) -> ... num_heads sequence_length d_q",
-        num_heads = num_heads
-    )
-    k = einops.einsum(
-        in_features,
-        k_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_k = einops.rearrange(
-        k,
-        "... sequence_length (num_heads d_k) -> ... num_heads sequence_length d_k",
-        num_heads = num_heads
-    )
-    v = einops.einsum(
-        in_features,
-        v_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_v = einops.rearrange(
-        v,
-        "... sequence_length (num_heads d_v) -> ... num_heads sequence_length d_v",
-        num_heads = num_heads
-    )
+    attention = Attention(d_model)
+    attention.q_proj_weight = torch.nn.Parameter(q_proj_weight)
+    attention.k_proj_weight = torch.nn.Parameter(k_proj_weight)
+    attention.v_proj_weight = torch.nn.Parameter(v_proj_weight)
+    attention.o_proj_weight = torch.nn.Parameter(o_proj_weight)
+    return attention.forward(num_heads, in_features)
     multihead_attention = run_scaled_dot_product_attention(multihead_q, multihead_k, multihead_v)
     rearranged_multihead_attention = einops.rearrange(
         multihead_attention,
@@ -545,7 +500,6 @@ def run_transformer_lm(
         d_ff,
         rope_theta,
         weights,
-        in_indices,
     )
     layer_input = transformer_lm.forward(in_indices)
     
@@ -660,10 +614,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    # subtract max to avoid numerical stability issues caused by exp(x) = inf
-    centered = in_features - in_features.max(dim=dim, keepdim=True).values
-    exponentiated = centered.exp()
-    return exponentiated / exponentiated.sum(dim=dim, keepdim=True)
+    return utils.run_soft_max(in_features, dim)
 
 
 def run_cross_entropy(
