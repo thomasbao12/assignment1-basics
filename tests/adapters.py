@@ -158,22 +158,21 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    attention = Attention(d_model)
+    max_seq_len = in_features.shape[-2]
+    token_positions = torch.arange(
+        max_seq_len,
+        device=in_features.device,
+    ).expand(
+        *in_features.shape[:-2],
+        max_seq_len,
+    )
+    attention = Attention(d_model, num_heads, max_seq_len)
     attention.q_proj_weight = torch.nn.Parameter(q_proj_weight)
     attention.k_proj_weight = torch.nn.Parameter(k_proj_weight)
     attention.v_proj_weight = torch.nn.Parameter(v_proj_weight)
     attention.o_proj_weight = torch.nn.Parameter(o_proj_weight)
-    return attention.forward(num_heads, in_features)
-    multihead_attention = run_scaled_dot_product_attention(multihead_q, multihead_k, multihead_v)
-    rearranged_multihead_attention = einops.rearrange(
-        multihead_attention,
-        "... num_heads sequence_length d_v -> ... sequence_length (num_heads d_v)"
-    )
-    return einops.einsum(
-        rearranged_multihead_attention,
-        o_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
+    
+    return attention.forward(in_features, token_positions)
 
 
 def run_multihead_self_attention_with_rope(
@@ -213,67 +212,12 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_model"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    d_k = d_model // num_heads
-    multihead_token_positions = einops.repeat(
-        token_positions,
-        "... sequence_length -> ... num_heads sequence_length",
-        num_heads=num_heads
-    )
-
-    q = einops.einsum(
-        in_features,
-        q_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_q = einops.rearrange(
-        q,
-        "... sequence_length (num_heads d_q) -> ... num_heads sequence_length d_q",
-        num_heads = num_heads
-    )
-    rotated_multihead_q = run_rope(
-        d_k,
-        theta,
-        max_seq_len,
-        multihead_q,
-        multihead_token_positions,
-    )
-    k = einops.einsum(
-        in_features,
-        k_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_k = einops.rearrange(
-        k,
-        "... sequence_length (num_heads d_k) -> ... num_heads sequence_length d_k",
-        num_heads = num_heads
-    )
-    rotated_multihead_k = run_rope(
-            d_k,
-            theta,
-            max_seq_len,
-            multihead_k,
-            multihead_token_positions,
-        )
-    v = einops.einsum(
-        in_features,
-        v_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
-    multihead_v = einops.rearrange(
-        v,
-        "... sequence_length (num_heads d_v) -> ... num_heads sequence_length d_v",
-        num_heads = num_heads
-    )
-    multihead_attention = run_scaled_dot_product_attention(rotated_multihead_q, rotated_multihead_k, multihead_v)
-    rearranged_multihead_attention = einops.rearrange(
-        multihead_attention,
-        "... num_heads sequence_length d_v -> ... sequence_length (num_heads d_v)"
-    )
-    return einops.einsum(
-        rearranged_multihead_attention,
-        o_proj_weight,
-        "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-    )
+    attention = Attention(d_model, num_heads, max_seq_len, theta)
+    attention.q_proj_weight = torch.nn.Parameter(q_proj_weight)
+    attention.k_proj_weight = torch.nn.Parameter(k_proj_weight)
+    attention.v_proj_weight = torch.nn.Parameter(v_proj_weight)
+    attention.o_proj_weight = torch.nn.Parameter(o_proj_weight)
+    return attention.forward(in_features, token_positions)
 
 
 def run_rope(
