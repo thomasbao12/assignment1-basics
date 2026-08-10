@@ -32,7 +32,6 @@ class TransformerLM(torch.nn.Module):
         d_ff: int,
         rope_theta: float,
         weights: dict[str, Tensor],
-        in_indices: Int[Tensor, " batch_size sequence_length"],
     ):
         super().__init__()
 
