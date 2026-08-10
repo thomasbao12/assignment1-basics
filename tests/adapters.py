@@ -20,6 +20,7 @@ from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.train_bpe import train_bpe
+import cs336_basics.utils as utils
 
 def run_linear(
     d_in: int,
@@ -636,14 +637,7 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    n = len(dataset)
-    indices = np.random.randint(low = 0, high = n - context_length, size = batch_size)
-    input_sequences = torch.stack([
-        torch.from_numpy(dataset[i : i + context_length])
-        for i in indices
-    ]).to(device)
-    output_sequences = input_sequences + 1
-    return (input_sequences, output_sequences)
+    return utils.run_get_batch(dataset, batch_size, context_length, device)
 
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
