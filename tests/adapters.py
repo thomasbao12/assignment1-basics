@@ -20,6 +20,7 @@ from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.train_bpe import train_bpe
+from cs336_basics.transformer_lm import TransformerLM
 import cs336_basics.utils as utils
 
 def run_linear(
@@ -535,13 +536,19 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    embeddings = run_embedding(
+    transformer_lm = TransformerLM(
         vocab_size,
+        context_length,
         d_model,
-        weights["token_embeddings.weight"], 
+        num_layers,
+        num_heads,
+        d_ff,
+        rope_theta,
+        weights,
         in_indices,
     )
-    layer_input = embeddings
+    layer_input = transformer_lm.forward(in_indices)
+    
     for layer in range(num_layers):
         prefix = f"layers.{layer}."
         prefix_len = len(prefix)
