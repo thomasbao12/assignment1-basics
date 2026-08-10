@@ -21,6 +21,7 @@ from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.train_bpe import train_bpe
+from cs336_basics.transformer_block import TransformerBlock
 from cs336_basics.transformer_lm import TransformerLM
 import cs336_basics.utils as utils
 
@@ -321,39 +322,36 @@ def run_transformer_block(
         seq_len,
     ).expand(batch_size, seq_len)
 
-    rms_norm1 = run_rmsnorm(
-        d_model,
-        eps=1e-5,
-        weights=weights["ln1.weight"],
-        in_features=in_features,
-    )
-    mha = run_multihead_self_attention_with_rope(
+    transformer_block = TransformerBlock(
         d_model,
         num_heads,
+        d_ff,
         max_seq_len,
         theta,
-        weights["attn.q_proj.weight"],
-        weights["attn.k_proj.weight"],
-        weights["attn.v_proj.weight"],
-        weights["attn.output_proj.weight"],
-        rms_norm1,
-        token_positions
+    )    
+    transformer_block.rms_norm1.load_state_dict({
+        'weights': weights["ln1.weight"]
+    })
+    transformer_block.mha.q_proj_weight = torch.nn.Parameter(
+        weights["attn.q_proj.weight"]
     )
-    rms_norm2 = run_rmsnorm(
-        d_model,
-        eps=1e-5,
-        weights=weights["ln2.weight"],
-        in_features=in_features + mha
+    transformer_block.mha.k_proj_weight = torch.nn.Parameter(
+        weights["attn.k_proj.weight"]
     )
-    ff = run_swiglu(
-        d_model,
-        d_ff,
-        weights["ffn.w1.weight"],
-        weights["ffn.w2.weight"],
-        weights["ffn.w3.weight"],
-        rms_norm2
+    transformer_block.mha.v_proj_weight = torch.nn.Parameter(
+        weights["attn.v_proj.weight"]
     )
-    return in_features + mha + ff
+    transformer_block.mha.o_proj_weight = torch.nn.Parameter(
+        weights["attn.output_proj.weight"]
+    )
+    transformer_block.rms_norm2.load_state_dict({
+        'weights': weights["ln2.weight"]
+    })
+    transformer_block.ffn.w1.data = weights["ffn.w1.weight"]
+    transformer_block.ffn.w2.data = weights["ffn.w2.weight"]
+    transformer_block.ffn.w3.data = weights["ffn.w3.weight"]
+    
+    return transformer_block.forward(in_features, token_positions)
 
 
 def run_transformer_lm(

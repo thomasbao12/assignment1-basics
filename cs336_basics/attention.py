@@ -1,24 +1,9 @@
-import os
-from collections.abc import Iterable
-from typing import IO, Any, BinaryIO
-
 import einops
-import math
-import numpy as np
-import numpy.typing as npt
 import torch
-from jaxtyping import Bool, Float, Int
+from jaxtyping import Float, Int
 from torch import Tensor
 
-from cs336_basics.adamw import AdamW
 from cs336_basics.rope import RoPE
-from cs336_basics.embedding import Embedding
-from cs336_basics.linear import Linear
-from cs336_basics.rmsnorm import RMSNorm
-from cs336_basics.swiglu import SwiGLU
-from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.train_bpe import train_bpe
-from cs336_basics.transformer_lm import TransformerLM
 import cs336_basics.utils as utils
 
 class Attention(torch.nn.Module):
@@ -31,7 +16,7 @@ class Attention(torch.nn.Module):
         theta: float | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
-    ) -> Float[Tensor, " ... sequence_length d_model"]:
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.q_proj_weight = utils.init_random_weights(d_model, d_model, dtype, device)
