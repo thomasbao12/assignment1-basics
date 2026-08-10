@@ -10,14 +10,12 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from cs336_basics.adamw import AdamW
 from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
 from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
-from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.train_bpe import train_bpe
+from cs336_basics.transformer_block import TransformerBlock
 import cs336_basics.utils as utils
 
 class TransformerLM(torch.nn.Module):
@@ -35,14 +33,23 @@ class TransformerLM(torch.nn.Module):
     ):
         super().__init__()
 
-        self.embedding_layer = Embedding(
+        self.token_embeddings = Embedding(
             vocab_size,
             d_model,
         )
-        self.embedding_layer.load_state_dict({
-                'weights': weights["token_embeddings.weight"]
-        })
+        self.layers = torch.nn.ModuleList([
+            TransformerBlock(
+                d_model, num_heads, d_ff, context_length, rope_theta
+            ) for layer in range(num_layers)
+        ])
+        self.ln_final = RMSNorm(d_model)
+        self.lm_head = Linear(d_model, vocab_size)
         
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.embedding_layer.forward(x)
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+        embedding = self.token_embeddings.forward(x)
+        layer_input = embedding
+        for layer in self.layers:
+            layer_input = layer.forward(layer_input, token_positions)
+        last_norm = self.ln_final.forward(layer_input)
+        return self.lm_head.forward(last_norm)

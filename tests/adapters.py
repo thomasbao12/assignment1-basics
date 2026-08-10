@@ -44,7 +44,7 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
     linear = Linear(d_in, d_out)
-    linear.load_state_dict({'weights': weights})
+    linear.load_state_dict({'weight': weights})
     return linear.forward(in_features)
     
 
@@ -69,7 +69,7 @@ def run_embedding(
     """
     embedding = Embedding(vocab_size, d_model)
     embedding.load_state_dict({
-        'weights': weights
+        'weight': weights
     })
     return embedding.forward(token_ids)
 
@@ -101,9 +101,9 @@ def run_swiglu(
     # swiglu.load_state_dict(weights)
     # You can also manually assign the weights
     swiglu = SwiGLU(d_model, d_ff)
-    swiglu.w1.data = w1_weight
-    swiglu.w2.data = w2_weight
-    swiglu.w3.data = w3_weight
+    swiglu.w1.weight.data = w1_weight
+    swiglu.w2.weight.data = w2_weight
+    swiglu.w3.weight.data = w3_weight
     return swiglu.forward(in_features)
 
 
@@ -168,10 +168,10 @@ def run_multihead_self_attention(
         max_seq_len,
     )
     attention = Attention(d_model, num_heads, max_seq_len)
-    attention.q_proj_weight = torch.nn.Parameter(q_proj_weight)
-    attention.k_proj_weight = torch.nn.Parameter(k_proj_weight)
-    attention.v_proj_weight = torch.nn.Parameter(v_proj_weight)
-    attention.o_proj_weight = torch.nn.Parameter(o_proj_weight)
+    attention.q_proj.weight = torch.nn.Parameter(q_proj_weight)
+    attention.k_proj.weight = torch.nn.Parameter(k_proj_weight)
+    attention.v_proj.weight = torch.nn.Parameter(v_proj_weight)
+    attention.output_proj.weight = torch.nn.Parameter(o_proj_weight)
     
     return attention.forward(in_features, token_positions)
 
@@ -214,10 +214,10 @@ def run_multihead_self_attention_with_rope(
         implementation with the given QKV projection weights and input features.
     """
     attention = Attention(d_model, num_heads, max_seq_len, theta)
-    attention.q_proj_weight = torch.nn.Parameter(q_proj_weight)
-    attention.k_proj_weight = torch.nn.Parameter(k_proj_weight)
-    attention.v_proj_weight = torch.nn.Parameter(v_proj_weight)
-    attention.o_proj_weight = torch.nn.Parameter(o_proj_weight)
+    attention.q_proj.weight = torch.nn.Parameter(q_proj_weight)
+    attention.k_proj.weight = torch.nn.Parameter(k_proj_weight)
+    attention.v_proj.weight = torch.nn.Parameter(v_proj_weight)
+    attention.output_proj.weight = torch.nn.Parameter(o_proj_weight)
     return attention.forward(in_features, token_positions)
 
 
@@ -329,27 +329,7 @@ def run_transformer_block(
         max_seq_len,
         theta,
     )    
-    transformer_block.rms_norm1.load_state_dict({
-        'weights': weights["ln1.weight"]
-    })
-    transformer_block.mha.q_proj_weight = torch.nn.Parameter(
-        weights["attn.q_proj.weight"]
-    )
-    transformer_block.mha.k_proj_weight = torch.nn.Parameter(
-        weights["attn.k_proj.weight"]
-    )
-    transformer_block.mha.v_proj_weight = torch.nn.Parameter(
-        weights["attn.v_proj.weight"]
-    )
-    transformer_block.mha.o_proj_weight = torch.nn.Parameter(
-        weights["attn.output_proj.weight"]
-    )
-    transformer_block.rms_norm2.load_state_dict({
-        'weights': weights["ln2.weight"]
-    })
-    transformer_block.ffn.w1.data = weights["ffn.w1.weight"]
-    transformer_block.ffn.w2.data = weights["ffn.w2.weight"]
-    transformer_block.ffn.w3.data = weights["ffn.w3.weight"]
+    transformer_block.load_state_dict(weights)
     
     return transformer_block.forward(in_features, token_positions)
 
@@ -443,36 +423,12 @@ def run_transformer_lm(
         rope_theta,
         weights,
     )
-    layer_input = transformer_lm.forward(in_indices)
-    
-    for layer in range(num_layers):
-        prefix = f"layers.{layer}."
-        prefix_len = len(prefix)
-        layer_weights = {}
-        for k, v in weights.items():
-            if k.startswith(prefix):
-                layer_weights[ k[prefix_len:] ] = v
-        layer_input = run_transformer_block(
-            d_model,
-            num_heads,
-            d_ff,
-            context_length,
-            rope_theta,
-            layer_weights,
-            layer_input
-        )
-    last_norm = run_rmsnorm(
-        d_model,
-        1e-5,
-        weights["ln_final.weight"],
-        layer_input
-    )
-    return run_linear(
-        d_model,
-        vocab_size,
-        weights['lm_head.weight'],
-        last_norm
-    )
+    transformer_lm.load_state_dict(weights)
+
+    token_positions = torch.arange(
+        in_indices.shape[-1]
+    ).expand(*in_indices.shape)
+    return transformer_lm.forward(in_indices, token_positions)
 
 
 def run_rmsnorm(
@@ -500,7 +456,7 @@ def run_rmsnorm(
     else: 
         rms_norm = RMSNorm(d_model, eps)
     rms_norm.load_state_dict({
-        'weights': weights
+        'weight': weights
     })
     result = rms_norm.forward(in_features)
     return result

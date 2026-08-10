@@ -11,7 +11,7 @@ class Embedding(torch.nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
-        self.weights = utils.init_random_weights(num_embeddings, embedding_dim, dtype, device)
+        self.weight = utils.init_random_weights(num_embeddings, embedding_dim, dtype, device)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.weights[x]
+        return self.weight[x]

@@ -1,0 +1,10 @@
+{
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportGeneralTypeIssues": "none",
+        "reportOptionalMemberAccess": "none",
+        "reportArgumentType": "none",
+        "reportReturnType": "none"
+    },
+    "python.analysis.ignore": ["**/*.py"]
+}

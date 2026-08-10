@@ -3,6 +3,7 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
+from cs336_basics.linear import Linear
 from cs336_basics.rope import RoPE
 import cs336_basics.utils as utils
 
@@ -19,10 +20,11 @@ class Attention(torch.nn.Module):
     ):
         super().__init__()
         self.num_heads = num_heads
-        self.q_proj_weight = utils.init_random_weights(d_model, d_model, dtype, device)
-        self.k_proj_weight = utils.init_random_weights(d_model, d_model, dtype, device)
-        self.v_proj_weight = utils.init_random_weights(d_model, d_model, dtype, device)
-        self.o_proj_weight = utils.init_random_weights(d_model, d_model, dtype, device)
+        self.q_proj = Linear(d_model, d_model, dtype, device)
+        self.k_proj = Linear(d_model, d_model, dtype, device)
+        self.v_proj = Linear(d_model, d_model, dtype, device)
+        self.output_proj = Linear(d_model, d_model, dtype, device)
+        
         if theta is not None:
             self.rope = RoPE(theta, d_model / num_heads, max_seq_len, device)
         else:
@@ -41,33 +43,21 @@ class Attention(torch.nn.Module):
             num_heads=num_heads
         )
 
-        q = einops.einsum(
-            in_features,
-            self.q_proj_weight,
-            "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-        )
+        q = self.q_proj.forward(in_features)
         multihead_q = einops.rearrange(
             q,
             "... sequence_length (num_heads d_q) -> ... num_heads sequence_length d_q",
             num_heads = num_heads
         )
         
-        k = einops.einsum(
-            in_features,
-            self.k_proj_weight,
-            "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-        )
+        k = self.k_proj.forward(in_features)
         multihead_k = einops.rearrange(
             k,
             "... sequence_length (num_heads d_k) -> ... num_heads sequence_length d_k",
             num_heads = num_heads
         )
 
-        v = einops.einsum(
-            in_features,
-            self.v_proj_weight,
-            "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-        )
+        v = self.v_proj.forward(in_features)
         multihead_v = einops.rearrange(
             v,
             "... sequence_length (num_heads d_v) -> ... num_heads sequence_length d_v",
@@ -92,8 +82,4 @@ class Attention(torch.nn.Module):
             multihead_attention,
             "... num_heads sequence_length d_v -> ... sequence_length (num_heads d_v)"
         )
-        return einops.einsum(
-            rearranged_multihead_attention,
-            self.o_proj_weight,
-            "... sequence_length d_in, d_model d_in -> ... sequence_length d_model"
-        )
+        return self.output_proj.forward(rearranged_multihead_attention)

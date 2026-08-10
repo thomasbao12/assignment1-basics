@@ -12,7 +12,7 @@ class RMSNorm(torch.nn.Module):
     ):
         super().__init__()
         self.eps = eps
-        self.weights = torch.nn.Parameter(
+        self.weight = torch.nn.Parameter(
             torch.nn.init.trunc_normal_(
                 torch.empty(
                     (
@@ -30,6 +30,6 @@ class RMSNorm(torch.nn.Module):
         rms = (x_upcast.square().mean(dim=-1, keepdim = True) + self.eps).sqrt()
         return einops.einsum(
             (x_upcast / rms).to(in_detype),
-            self.weights,
+            self.weight,
             "... d_model, d_model -> ... d_model"
         )
