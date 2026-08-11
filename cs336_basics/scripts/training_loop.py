@@ -80,27 +80,28 @@ def main():
         rope_theta,
         device = device
     )
-    opt = SGD(transformer.parameters(), 0.01)
+    opt = SGD(transformer.parameters(), 1)
     token_positions = torch.arange(
         context_length,
         device = device
     ).expand(batch_size, context_length)
 
+    input_seq, output_seq = utils.run_get_batch(
+        tokenized_corpus, batch_size, context_length, device = device)
     
-    for step in range(100):
-        input_seq, output_seq = utils.run_get_batch(
-            tokenized_corpus, batch_size, context_length, device = device)
-        
+    for step in range(1000):
         logits = transformer.forward(input_seq, token_positions)
         y_hat = utils.run_softmax(logits, -1)
         
-        loss = utils.run_cross_entropy(
+        loss: torch.Tensor = utils.run_cross_entropy(
             y_hat, 
             output_seq
         )
         loss.backward()
+        
         opt.step()
-        print(f"step: {step} loss: {loss}")
+        if step % 100 == 0:
+            print(f"step: {step} loss: {loss}")
         
 
     pass 
