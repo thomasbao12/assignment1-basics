@@ -2,7 +2,6 @@ import argparse
 import cs336_basics.utils as utils
 from cs336_basics.transformer_lm import TransformerLM
 from cs336_basics.adamw import AdamW
-from cs336_basics.sgd import SGD
 import numpy as np
 
 import torch
@@ -80,23 +79,29 @@ def main():
         rope_theta,
         device = device
     )
-    opt = SGD(transformer.parameters(), 0.1)
+    opt = AdamW(
+        transformer.parameters(),
+        lr = 0.01,
+        betas = (0.9, 0.99),
+        eps = 1e-8,
+        weight_decay=0.01,
+    )
     token_positions = torch.arange(
         context_length,
         device = device
     ).expand(batch_size, context_length)
 
-    input_seq, output_seq = utils.run_get_batch(
-        tokenized_corpus, batch_size, context_length, device = device)
+    
     
     for step in range(1000):
+        opt.zero_grad()
+        input_seq, output_seq = utils.run_get_batch(
+                tokenized_corpus, batch_size, context_length, device = device)
+        
         logits = transformer.forward(input_seq, token_positions)
         
-        loss: torch.Tensor = utils.run_cross_entropy(
-            logits, 
-            output_seq
-        )
-        opt.zero_grad()
+        loss = utils.run_cross_entropy(logits, output_seq)
+
         loss.backward()
         opt.step()
         
