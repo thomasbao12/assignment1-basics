@@ -99,7 +99,7 @@ def main():
         loss.backward()
         
         opt.step()
-        
+        opt.zero_grad()
         print(f"step: {step} loss: {loss}")
         
 
