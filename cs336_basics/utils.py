@@ -70,6 +70,7 @@ def run_scaled_dot_product_attention(
     K: Float[Tensor, " ... keys d_k"],
     V: Float[Tensor, " ... keys d_v"],
     mask: Bool[Tensor, " ... queries keys"] | None = None, # default is causal mask
+    device: torch.device | None = None,
 ) -> Float[Tensor, " ... queries d_v"]:
     """
     Given key (K), query (Q), and value (V) tensors, return
@@ -90,7 +91,7 @@ def run_scaled_dot_product_attention(
         "... queries d_k, ... keys d_k -> ... queries keys"
     ) / d_k ** 0.5
     if mask is None:
-        ones = torch.ones(scaled_dot.shape, dtype=torch.bool)
+        ones = torch.ones(scaled_dot.shape, dtype=torch.bool, device = device)
         mask = torch.tril(ones)
 
     masked = torch.where(
@@ -106,3 +107,29 @@ def run_scaled_dot_product_attention(
         V,
         "... queries keys, ... keys d_v -> ... queries d_v"
     )
+
+def run_cross_entropy(
+    inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]
+) -> Float[Tensor, ""]:
+    """Given a tensor of inputs and targets, compute the average cross-entropy
+    loss across examples.
+
+    Args:
+        inputs (Float[Tensor, "batch_size vocab_size"]): inputs[i][j] is the
+            unnormalized logit of jth class for the ith example.
+        targets (Int[Tensor, "batch_size"]): Tensor of shape (batch_size,) with the index of the correct class.
+            Each value must be between 0 and `num_classes - 1`.
+
+    Returns:
+        Float[Tensor, ""]: The average cross-entropy loss across examples.
+    """
+    # subtract max to avoid numerical stability issues caused by exp(x) = inf
+    centered_probabilities = inputs - inputs.max(dim=-1, keepdim=True).values
+    target_logits = torch.gather(
+        centered_probabilities,
+        dim=-1,
+        index=targets.unsqueeze(-1),
+    ).squeeze(-1)
+
+    losses = -target_logits + centered_probabilities.exp().sum(dim=-1).log()
+    return losses.mean()

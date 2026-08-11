@@ -29,21 +29,22 @@ class TransformerLM(torch.nn.Module):
         num_heads: int,
         d_ff: int,
         rope_theta: float,
-        weights: dict[str, Tensor],
+        device: torch.device | None = None,
     ):
         super().__init__()
 
         self.token_embeddings = Embedding(
             vocab_size,
             d_model,
+            device = device
         )
         self.layers = torch.nn.ModuleList([
             TransformerBlock(
-                d_model, num_heads, d_ff, context_length, rope_theta
+                d_model, num_heads, d_ff, context_length, rope_theta, device = device
             ) for layer in range(num_layers)
         ])
-        self.ln_final = RMSNorm(d_model)
-        self.lm_head = Linear(d_model, vocab_size)
+        self.ln_final = RMSNorm(d_model, device = device)
+        self.lm_head = Linear(d_model, vocab_size, device = device)
         
     
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:

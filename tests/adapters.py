@@ -530,12 +530,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    # subtract max to avoid numerical stability issues caused by exp(x) = inf
-    centered_probabilities = inputs - inputs.max(dim=-1, keepdim=True).values
-    target_probability = centered_probabilities[torch.arange(centered_probabilities.shape[0]), targets]
-
-    losses = -target_probability + centered_probabilities.exp().sum(dim=-1).log()
-    return losses.mean()
+    return utils.run_cross_entropy(inputs, targets)
 
 
 

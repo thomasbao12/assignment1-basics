@@ -1,6 +1,11 @@
 import argparse
 import cs336_basics.utils as utils
+from cs336_basics.transformer_lm import TransformerLM
+from cs336_basics.adamw import AdamW
+from cs336_basics.sgd import SGD
 import numpy as np
+
+import torch
 
 '''
 # Hyperparams:
@@ -58,9 +63,46 @@ def main():
     batch_size = args.batch_size
     context_length = args.context_length
 
-    input_seq, output_seq = utils.run_get_batch(
-        tokenized_corpus, batch_size, context_length, device = "mps")
-    print(input_seq, output_seq)
+    vocab_size = 1000 # from tokenize_corpus.py
+    d_model = 64
+    num_layers = 2
+    num_heads = 4
+    d_ff = 128
+    rope_theta = 10000.0
+    device = None #"mps"
+    transformer = TransformerLM(
+        vocab_size,
+        context_length,
+        d_model,
+        num_layers,
+        num_heads,
+        d_ff,
+        rope_theta,
+        device = device
+    )
+    opt = SGD(transformer.parameters())
+    token_positions = torch.arange(
+        context_length,
+        device = device
+    ).expand(batch_size, context_length)
+
+    
+    for step in range(100):
+        input_seq, output_seq = utils.run_get_batch(
+            tokenized_corpus, batch_size, context_length, device = device)
+        
+        logits = transformer.forward(input_seq, token_positions)
+        y_hat = utils.run_softmax(logits, -1)
+        
+        loss = utils.run_cross_entropy(
+            y_hat, 
+            output_seq
+        )
+        loss.backward()
+        opt.step()
+        print(f"step: {step} loss: {loss}")
+        
+
     pass 
 
 if __name__ == "__main__":
