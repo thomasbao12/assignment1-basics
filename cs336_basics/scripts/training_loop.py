@@ -96,10 +96,10 @@ def main():
             logits, 
             output_seq
         )
-        loss.backward()
-        
-        opt.step()
         opt.zero_grad()
+        loss.backward()
+        opt.step()
+        
         if step % 100 == 0:
             print(f"step: {step} loss: {loss}")
         
