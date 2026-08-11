@@ -80,7 +80,7 @@ def main():
         rope_theta,
         device = device
     )
-    opt = SGD(transformer.parameters())
+    opt = SGD(transformer.parameters(), 0.01)
     token_positions = torch.arange(
         context_length,
         device = device
