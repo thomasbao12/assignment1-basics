@@ -24,7 +24,6 @@ def load_config(config_path: str) -> dict:
     with open(config_path, "rb") as f:
         return tomllib.load(f)
 
-
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -115,6 +114,15 @@ def main():
     ).expand(batch_size, context_length)
 
     # ----------------
+    # Load Checkpoint
+    # ----------------
+
+    checkpoint_config = config["checkpoint"]
+    input_file = checkpoint_config.get("input_file")
+    if input_file is not None:
+        utils.run_load_checkpoint(input_file, transformer, opt)
+
+    # ----------------
     # Training
     # ----------------
 
@@ -148,6 +156,16 @@ def main():
 
         if step % log_every == 0:
             print(f"step: {step} train loss: {loss.item():.4f}")
+
+    # ----------------
+    # Save Checkpoint
+    # ----------------
+
+    checkpoint_config = config["checkpoint"]
+    output_file = checkpoint_config.get("output_file")
+    if output_file is not None:
+        print(output_file)
+        utils.run_save_checkpoint(transformer, opt, max_iters - 1, output_file)
 
     # ----------------
     # Validation
