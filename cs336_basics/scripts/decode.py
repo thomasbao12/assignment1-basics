@@ -34,7 +34,9 @@ if __name__ == "__main__":
     prompt = config["prompt"]
     prompt_tokens = tokenizer.encode(prompt)
 
-    while prompt_tokens[-1] != 256 and len(prompt_tokens) < 500:
+    max_output_tokens = config["max_output_tokens"]
+
+    for _ in range(max_output_tokens):
         input = torch.tensor(prompt_tokens)
         logits = transformer.forward(input, torch.arange(len(prompt_tokens)))
         next_token_logits = logits[-1]

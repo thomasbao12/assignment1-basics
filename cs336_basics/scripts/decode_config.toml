@@ -1,6 +1,7 @@
 tokenizer_filepath = "data/tokenizer.pkl"
 model_filepath = "data/model/checkpoint"
 prompt = "Once upon a time there was a little boy named Ben. Ben loved to explore the world around him"
+max_output_tokens = 1000
 [model]
 vocab_size = 1000
 context_length = 128
