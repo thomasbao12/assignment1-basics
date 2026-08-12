@@ -40,18 +40,6 @@ def run_get_batch(
     ]).to(device)
     return (input_sequences, output_sequences)
 
-def init_random_weights(dim_rows, dim_cols, dtype, device) -> torch.nn.Parameter:
-    return torch.nn.Parameter(
-        torch.nn.init.trunc_normal_(
-            torch.empty(
-                dim_rows,
-                dim_cols,
-                dtype = dtype,
-                device = device,
-            )
-        )
-    )
-
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`

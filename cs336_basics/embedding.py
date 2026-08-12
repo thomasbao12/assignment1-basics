@@ -1,5 +1,4 @@
 import torch
-import cs336_basics.utils as utils
 
 class Embedding(torch.nn.Module):
 
@@ -11,7 +10,16 @@ class Embedding(torch.nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
-        self.weight = utils.init_random_weights(num_embeddings, embedding_dim, dtype, device)
+        self.weight = torch.nn.Parameter(
+            torch.nn.init.trunc_normal_(
+                torch.empty(
+                    num_embeddings,
+                    embedding_dim,
+                    dtype = dtype,
+                    device = device,
+                ),
+            )
+        )
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.weight[x]

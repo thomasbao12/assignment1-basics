@@ -12,17 +12,7 @@ class RMSNorm(torch.nn.Module):
     ):
         super().__init__()
         self.eps = eps
-        self.weight = torch.nn.Parameter(
-            torch.nn.init.trunc_normal_(
-                torch.empty(
-                    (
-                        d_model,
-                    ),
-                    dtype=dtype,
-                    device=device
-                )
-            )
-        )
+        self.weight = torch.nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         in_detype = x.dtype
