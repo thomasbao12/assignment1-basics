@@ -1,128 +1,180 @@
 import argparse
-import cs336_basics.utils as utils
-from cs336_basics.transformer_lm import TransformerLM
-from cs336_basics.adamw import AdamW
-import numpy as np
+import tomllib
 
+import numpy as np
 import torch
 
-'''
-# Hyperparams:
+import cs336_basics.utils as utils
+from cs336_basics.adamw import AdamW
+from cs336_basics.transformer_lm import TransformerLM
 
-## Model
 
-- vocab_size
-- context_length
-- d_model
-- num_layers
-- d_ff
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to TOML configuration file.",
+    )
+    return parser.parse_args()
 
-## Optimization
 
-- learning_rate
-- weight_decay
-- beta1
-- beta2
-- eps
-- max_grad_norm
+def load_config(config_path: str) -> dict:
+    with open(config_path, "rb") as f:
+        return tomllib.load(f)
 
-## Learning rate schedule
-
-- warmup_iters
-- cosine_cycle_iters
-- min_learning_rate
-
-## Training 
-
-- batch_size
-- max_iters
-- device
-- dtype
-
-'''
-'''
-
-uv run python cs336_basics/scripts/training_loop.py \
-    --tokenized-corpus-file-path data/tiny_example.tokens.npy \
-    --batch-size 3 \
-    --context-length 10
-'''
 
 def main():
-    tokenized_corpus_train_file_path = "data/tiny_stories_train_smoke_test.tokens.npy"
-    tokenized_corpus_train = np.load(tokenized_corpus_train_file_path, mmap_mode = "r")
+    args = parse_args()
+    config = load_config(args.config)
 
-    
-    context_length = 128
+    # ----------------
+    # Data
+    # ----------------
 
-    vocab_size = 1001 # from tokenize_corpus.py
-    d_model = 128
-    num_layers = 2
-    num_heads = 4
-    d_ff = 384
-    rope_theta = 10000.0
-    device = None #"mps"
-    transformer = TransformerLM(
-        vocab_size,
-        context_length,
-        d_model,
-        num_layers,
-        num_heads,
-        d_ff,
-        rope_theta,
-        device = device
+    train_file = config["data"]["train_file"]
+    validation_file = config["data"]["validation_file"]
+
+    tokenized_corpus_train = np.load(
+        train_file,
+        mmap_mode="r",
     )
 
-    batch_size = 4
-    
+    tokenized_corpus_valid = np.load(
+        validation_file,
+        mmap_mode="r",
+    )
+
+    # ----------------
+    # Model config
+    # ----------------
+
+    model_config = config["model"]
+
+    vocab_size = model_config["vocab_size"]
+    context_length = model_config["context_length"]
+    d_model = model_config["d_model"]
+    num_layers = model_config["num_layers"]
+    num_heads = model_config["num_heads"]
+    d_ff = model_config["d_ff"]
+    rope_theta = model_config["rope_theta"]
+
+    # ----------------
+    # Training config
+    # ----------------
+
+    training_config = config["training"]
+
+    batch_size = training_config["batch_size"]
+    max_iters = training_config["max_iters"]
+    log_every = training_config["log_every"]
+
+    device_str = training_config["device"]
+    device = None if device_str == "cpu" else device_str
+
+    # ----------------
+    # Model
+    # ----------------
+
+    transformer = TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+        device=device,
+    )
+
+    # ----------------
+    # Optimizer
+    # ----------------
+
+    optimizer_config = config["optimizer"]
+
     opt = AdamW(
         transformer.parameters(),
-        lr = 0.01,
-        betas = (0.9, 0.999),
-        eps = 1e-8,
-        weight_decay=0.01,
+        lr=optimizer_config["learning_rate"],
+        betas=(
+            optimizer_config["beta1"],
+            optimizer_config["beta2"],
+        ),
+        eps=optimizer_config["eps"],
+        weight_decay=optimizer_config["weight_decay"],
     )
+
+    # ----------------
+    # Positions
+    # ----------------
+
     token_positions = torch.arange(
         context_length,
-        device = device
+        device=device,
     ).expand(batch_size, context_length)
 
-    
-    
-    for step in range(1000):
+    # ----------------
+    # Training
+    # ----------------
+
+    transformer.train()
+
+    for step in range(max_iters):
         opt.zero_grad()
+
         input_seq, output_seq = utils.run_get_batch(
-                tokenized_corpus_train, batch_size, context_length, device = device)
+            tokenized_corpus_train,
+            batch_size,
+            context_length,
+            device=device,
+        )
 
-        
-        logits = transformer.forward(input_seq, token_positions)
+        logits = transformer(input_seq, token_positions)
 
-        loss = utils.run_cross_entropy(logits, output_seq)
+        loss = utils.run_cross_entropy(
+            logits,
+            output_seq,
+        )
 
         loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(
+            transformer.parameters(),
+            optimizer_config["max_grad_norm"],
+        )
+
         opt.step()
-        
-        if step % 100 == 0:
-            print(f"step: {step} loss: {loss}")
 
-    # validation
-    tokenized_corpus_valid_file_path = "data/tiny_stories_valid_smoke_test.tokens.npy"
-    tokenized_corpus_valid = np.load(tokenized_corpus_valid_file_path)
+        if step % log_every == 0:
+            print(f"step: {step} train loss: {loss.item():.4f}")
 
-    opt.zero_grad()
-    input_seq, output_seq = utils.run_get_batch(
-        tokenized_corpus_valid, batch_size, context_length, device = device)
+    # ----------------
+    # Validation
+    # ----------------
 
-    
-    logits = transformer.forward(input_seq, token_positions)
+    transformer.eval()
 
-    loss = utils.run_cross_entropy(logits, output_seq)
-    print(f"validation loss: {loss}")
-    
-    if step % 100 == 0:
-        print(f"step: {step} loss: {loss}")
-    
-    pass 
+    with torch.no_grad():
+        input_seq, output_seq = utils.run_get_batch(
+            tokenized_corpus_valid,
+            batch_size,
+            context_length,
+            device=device,
+        )
+
+        logits = transformer(
+            input_seq,
+            token_positions,
+        )
+
+        validation_loss = utils.run_cross_entropy(
+            logits,
+            output_seq,
+        )
+
+    print(f"validation loss: {validation_loss.item():.4f}")
+
 
 if __name__ == "__main__":
     main()
