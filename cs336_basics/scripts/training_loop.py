@@ -47,26 +47,19 @@ uv run python cs336_basics/scripts/training_loop.py \
     --batch-size 3 \
     --context-length 10
 '''
+
 def main():
-    # load tokenized ids
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--tokenized-corpus-file-path", type=str, required=True)
-    parser.add_argument("--batch-size", type=int, required=True)
-    parser.add_argument("--context-length", type=int, required=True)
+    tokenized_corpus_train_file_path = "data/tiny_stories_train_smoke_test.tokens.npy"
+    tokenized_corpus_train = np.load(tokenized_corpus_train_file_path, mmap_mode = "r")
 
-    args = parser.parse_args()
     
-    tokenized_corpus_file_path = args.tokenized_corpus_file_path
-    tokenized_corpus = np.load(tokenized_corpus_file_path)
+    context_length = 128
 
-    batch_size = args.batch_size
-    context_length = args.context_length
-
-    vocab_size = 1000 # from tokenize_corpus.py
-    d_model = 64
+    vocab_size = 1001 # from tokenize_corpus.py
+    d_model = 128
     num_layers = 2
     num_heads = 4
-    d_ff = 128
+    d_ff = 384
     rope_theta = 10000.0
     device = None #"mps"
     transformer = TransformerLM(
@@ -79,10 +72,13 @@ def main():
         rope_theta,
         device = device
     )
+
+    batch_size = 4
+    
     opt = AdamW(
         transformer.parameters(),
         lr = 0.01,
-        betas = (0.9, 0.99),
+        betas = (0.9, 0.999),
         eps = 1e-8,
         weight_decay=0.01,
     )
@@ -96,10 +92,11 @@ def main():
     for step in range(1000):
         opt.zero_grad()
         input_seq, output_seq = utils.run_get_batch(
-                tokenized_corpus, batch_size, context_length, device = device)
+                tokenized_corpus_train, batch_size, context_length, device = device)
+
         
         logits = transformer.forward(input_seq, token_positions)
-        
+
         loss = utils.run_cross_entropy(logits, output_seq)
 
         loss.backward()
@@ -107,8 +104,24 @@ def main():
         
         if step % 100 == 0:
             print(f"step: {step} loss: {loss}")
-        
 
+    # validation
+    tokenized_corpus_valid_file_path = "data/tiny_stories_valid_smoke_test.tokens.npy"
+    tokenized_corpus_valid = np.load(tokenized_corpus_valid_file_path)
+
+    opt.zero_grad()
+    input_seq, output_seq = utils.run_get_batch(
+        tokenized_corpus_valid, batch_size, context_length, device = device)
+
+    
+    logits = transformer.forward(input_seq, token_positions)
+
+    loss = utils.run_cross_entropy(logits, output_seq)
+    print(f"validation loss: {loss}")
+    
+    if step % 100 == 0:
+        print(f"step: {step} loss: {loss}")
+    
     pass 
 
 if __name__ == "__main__":
