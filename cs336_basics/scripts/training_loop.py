@@ -140,7 +140,7 @@ def main():
         opt.zero_grad()
         logits = transformer(input_seq, token_positions)
         '''
-        #------- DEBUG -----
+        #------- DEBUG  -----
         if step % log_every == 0:
             from cs336_basics.scripts.decode import load_tokenizer
             tokenizer = load_tokenizer("data/tokenizer.pkl")
@@ -200,7 +200,7 @@ def main():
             input_seq,
             token_positions,
         )
-
+        
         validation_loss = utils.run_cross_entropy(
             logits,
             output_seq,

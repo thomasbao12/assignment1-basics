@@ -21,6 +21,8 @@ def encode_to_file(tokenizer, filepath):
     output_path = Path(filepath).with_suffix(".tokens")
     np.save(output_path, tokens_array)
 
+SPECIAL_TOKENS = list(["<|endoftext|>"])
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-filepath", type=str, required=True)
@@ -31,13 +33,13 @@ def main():
     vocab, merges = train_bpe(
         corpus_train_filepath,
         1000,
-        list(["<|endoftext|>"])
+        SPECIAL_TOKENS,
     )
 
     tokenizer = Tokenizer(
         vocab,
         merges,
-        list()
+        SPECIAL_TOKENS,
     )
 
     with open(config["tokenizer_filepath"], "wb") as f:

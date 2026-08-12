@@ -1,4 +1,4 @@
-from training_loop import init_transformer
+from cs336_basics.scripts.training_loop import init_transformer
 
 import argparse
 from cs336_basics.tokenizer import Tokenizer
@@ -34,13 +34,15 @@ if __name__ == "__main__":
     prompt = config["prompt"]
     prompt_tokens = tokenizer.encode(prompt)
 
-    while prompt_tokens[-1] != 256 and len(prompt_tokens) < 50:
+    while prompt_tokens[-1] != 256 and len(prompt_tokens) < 500:
         input = torch.tensor(prompt_tokens)
         logits = transformer.forward(input, torch.arange(len(prompt_tokens)))
         next_token_logits = logits[-1]
         #softmax = utils.run_softmax(next_token_logits, dim = -1)
         next_token_id = torch.argmax(next_token_logits).item()
         prompt_tokens.append(next_token_id)
+        if tokenizer.decode([next_token_id]) == "<|endoftext|>":
+            break
 
     print(
         tokenizer.decode(prompt_tokens)
