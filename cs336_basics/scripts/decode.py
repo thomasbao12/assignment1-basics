@@ -1,10 +1,12 @@
 from training_loop import init_transformer
 
 import argparse
+from cs336_basics.tokenizer import Tokenizer
 import cs336_basics.utils as utils
 import numpy as np
 import pickle
 import tomllib
+import torch
 
 def load_config(config_path: str) -> dict:
     with open(config_path, "rb") as f:
@@ -18,16 +20,24 @@ args = parser.parse_args()
 config = load_config(args.config_filepath)
 
 with open(config["tokenizer_filepath"], "rb") as f:
-    tokenizer = pickle.load(f)
+    tokenizer: Tokenizer = pickle.load(f)
 
 #utils.run_load_checkpoint(config["model_checkpoint"])
 
 transformer = init_transformer(config["model"])
 utils.load_model_checkpoint(config["model_filepath"], transformer)
 
-tokens = np.load(
-    "data/tiny_stories_valid_smoke_test.tokens.npy",
-    mmap_mode="r",
+prompt = config["prompt"]
+prompt_tokens = tokenizer.encode(prompt)
+
+while prompt_tokens[-1] != 256 and len(prompt_tokens) < 20:
+    input = torch.tensor(prompt_tokens)
+    logits = transformer.forward(input, torch.arange(len(prompt_tokens)))
+    next_token_logits = logits[-1]
+    softmax = utils.run_softmax(next_token_logits, dim = -1)
+    next_token_id = torch.argmax(softmax).item()
+    prompt_tokens.append(next_token_id)
+
+print(
+    tokenizer.decode(prompt_tokens)
 )
-print(tokenizer.decode(tokens))
-#transformer.forward()

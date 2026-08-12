@@ -185,6 +185,6 @@ def run_load_checkpoint(
         int: the previously-serialized number of iterations.
     """
     obj = torch.load(src)
-    load_model_checkpoint(src)
+    load_model_checkpoint(src, model)
     optimizer.load_state_dict(obj["optimizer_state_dict"])
     return obj["iteration"]

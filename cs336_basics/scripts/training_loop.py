@@ -71,7 +71,7 @@ def main():
 
     model_config = config["model"]
 
-    init_transformer(model_config)
+    transformer = init_transformer(model_config)
 
     # ----------------
     # Training config
@@ -108,6 +108,7 @@ def main():
     # Positions
     # ----------------
 
+    context_length = model_config["context_length"]
     token_positions = torch.arange(
         context_length,
         device=device,
