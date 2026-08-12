@@ -8,7 +8,6 @@ import cs336_basics.utils as utils
 from cs336_basics.adamw import AdamW
 from cs336_basics.transformer_lm import TransformerLM
 
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -129,23 +128,38 @@ def main():
 
     transformer.train()
 
+    
     for step in range(max_iters):
-        opt.zero_grad()
-
         input_seq, output_seq = utils.run_get_batch(
-            tokenized_corpus_train,
-            batch_size,
-            context_length,
-            device=device,
-        )
-
+                tokenized_corpus_train,
+                batch_size,
+                context_length,
+                device=device,
+            )
+        
+        opt.zero_grad()
         logits = transformer(input_seq, token_positions)
-
+        '''
+        #------- DEBUG -----
+        if step % log_every == 0:
+            from cs336_basics.scripts.decode import load_tokenizer
+            tokenizer = load_tokenizer("data/tokenizer.pkl")
+            predicted_tokens = torch.argmax(logits, dim = -1)
+            
+            print("input:")
+            print(input_seq[0])
+            print(output_seq[0])
+            print(tokenizer.decode(input_seq[0].tolist()))
+            print("predicted:")
+            print(tokenizer.decode(predicted_tokens[0].tolist()))
+            print("actual:")
+            print(tokenizer.decode(output_seq[0].tolist()))
+        '''
         loss = utils.run_cross_entropy(
             logits,
             output_seq,
         )
-
+        
         loss.backward()
 
         torch.nn.utils.clip_grad_norm_(
@@ -165,7 +179,7 @@ def main():
     checkpoint_config = config["checkpoint"]
     output_file = checkpoint_config.get("output_file")
     if output_file is not None:
-        print(output_file)
+        print(f"saving model checkpoint to {output_file}")
         utils.run_save_checkpoint(transformer, opt, max_iters - 1, output_file)
 
     # ----------------

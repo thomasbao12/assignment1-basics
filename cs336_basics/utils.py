@@ -29,12 +29,15 @@ def run_get_batch(
         language modeling labels.
     """
     n = len(dataset)
-    indices = np.random.randint(low = 0, high = n - context_length, size = batch_size)
+    indices = np.random.randint(low = 0, high = n - context_length - 1, size = batch_size)
     input_sequences = torch.stack([
         torch.from_numpy(dataset[i : i + context_length])
         for i in indices
     ]).to(device)
-    output_sequences = input_sequences + 1
+    output_sequences = torch.stack([
+        torch.from_numpy(dataset[i + 1 : i + context_length + 1])
+        for i in indices
+    ]).to(device)
     return (input_sequences, output_sequences)
 
 def init_random_weights(dim_rows, dim_cols, dtype, device) -> torch.nn.Parameter:

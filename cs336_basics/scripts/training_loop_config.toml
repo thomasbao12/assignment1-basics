@@ -3,7 +3,7 @@ train_file = "data/tiny_stories_train_smoke_test.tokens.npy"
 validation_file = "data/tiny_stories_valid_smoke_test.tokens.npy"
 
 [model]
-vocab_size = 1001
+vocab_size = 1000
 context_length = 128
 d_model = 128
 num_layers = 2
@@ -21,7 +21,7 @@ max_grad_norm = 1.0
 
 [training]
 batch_size = 4
-max_iters = 100
+max_iters = 1000
 log_every = 100
 device = "cpu"
 
@@ -31,5 +31,5 @@ cosine_cycle_iters = 1000
 min_learning_rate = 0.0001
 
 [checkpoint]
-input_file = "data/model/checkpoint"
+#input_file = "data/model/checkpoint"
 output_file = "data/model/checkpoint"

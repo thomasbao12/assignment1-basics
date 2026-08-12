@@ -158,6 +158,9 @@ class Tokenizer:
     def decode(self, ids: list[int]) -> str:
         bytes = b""
         for id in ids:
+            if id not in self.vocab:
+                print(f"{id} is missing")
+
             bytes += self.vocab.get(id)
         
         return bytes.decode("utf-8", errors="replace")
