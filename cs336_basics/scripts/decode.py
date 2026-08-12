@@ -7,6 +7,7 @@ import numpy as np
 import pickle
 import tomllib
 import torch
+import cs336_basics.utils
 
 def load_tokenizer(tokenizer_filepath: str):
     with open(tokenizer_filepath, "rb") as f:
@@ -40,8 +41,8 @@ if __name__ == "__main__":
         input = torch.tensor(prompt_tokens)
         logits = transformer.forward(input, torch.arange(len(prompt_tokens)))
         next_token_logits = logits[-1]
-        #softmax = utils.run_softmax(next_token_logits, dim = -1)
-        next_token_id = torch.argmax(next_token_logits).item()
+        softmax = utils.run_softmax(next_token_logits, dim = -1, temp=config["temperature"])
+        next_token_id = utils.sample_top_p(softmax, config["top_p_threshold"])
         prompt_tokens.append(next_token_id)
         if tokenizer.decode([next_token_id]) == "<|endoftext|>":
             break

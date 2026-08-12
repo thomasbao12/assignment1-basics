@@ -40,7 +40,7 @@ def run_get_batch(
     ]).to(device)
     return (input_sequences, output_sequences)
 
-def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
+def run_softmax(in_features: Float[Tensor, " ..."], dim: int, temp: float = 1) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
     of the input.
@@ -55,7 +55,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
     """
     # subtract max to avoid numerical stability issues caused by exp(x) = inf
     centered = in_features - in_features.max(dim=dim, keepdim=True).values
-    exponentiated = centered.exp()
+    exponentiated = (centered / temp).exp()
     return exponentiated / exponentiated.sum(dim=dim, keepdim=True)
 
 def run_scaled_dot_product_attention(
@@ -179,3 +179,21 @@ def run_load_checkpoint(
     load_model_checkpoint(src, model)
     optimizer.load_state_dict(obj["optimizer_state_dict"])
     return obj["iteration"]
+
+def sample_top_p(
+    probs: torch.Tensor,
+    p: float,
+) -> int:
+    sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+
+    # Include the token that crosses the p threshold
+    mask = cumulative_probs - sorted_probs < p
+
+    top_p_probs = sorted_probs * mask
+
+    # Renormalize
+    top_p_probs = top_p_probs / top_p_probs.sum()
+    sampled_position = torch.multinomial(top_p_probs, num_samples=1)
+
+    return sorted_indices[sampled_position].item()
