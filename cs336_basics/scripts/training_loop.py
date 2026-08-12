@@ -24,6 +24,26 @@ def load_config(config_path: str) -> dict:
     with open(config_path, "rb") as f:
         return tomllib.load(f)
 
+def init_transformer(model_config: dict) -> TransformerLM:
+    vocab_size = model_config["vocab_size"]
+    context_length = model_config["context_length"]
+    d_model = model_config["d_model"]
+    num_layers = model_config["num_layers"]
+    num_heads = model_config["num_heads"]
+    d_ff = model_config["d_ff"]
+    rope_theta = model_config["rope_theta"]
+    device = model_config.get("device", None)
+    return TransformerLM(
+        vocab_size=vocab_size,
+        context_length=context_length,
+        d_model=d_model,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        rope_theta=rope_theta,
+        device=device,
+    )
+
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -46,18 +66,12 @@ def main():
     )
 
     # ----------------
-    # Model config
+    # Model 
     # ----------------
 
     model_config = config["model"]
 
-    vocab_size = model_config["vocab_size"]
-    context_length = model_config["context_length"]
-    d_model = model_config["d_model"]
-    num_layers = model_config["num_layers"]
-    num_heads = model_config["num_heads"]
-    d_ff = model_config["d_ff"]
-    rope_theta = model_config["rope_theta"]
+    init_transformer(model_config)
 
     # ----------------
     # Training config
@@ -72,20 +86,6 @@ def main():
     device_str = training_config["device"]
     device = None if device_str == "cpu" else device_str
 
-    # ----------------
-    # Model
-    # ----------------
-
-    transformer = TransformerLM(
-        vocab_size=vocab_size,
-        context_length=context_length,
-        d_model=d_model,
-        num_layers=num_layers,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        rope_theta=rope_theta,
-        device=device,
-    )
 
     # ----------------
     # Optimizer

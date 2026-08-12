@@ -159,6 +159,13 @@ def run_save_checkpoint(
     }
     torch.save(obj, out)
 
+def load_model_checkpoint(
+    src: str | os.PathLike | BinaryIO | IO[bytes],
+    model: torch.nn.Module
+):
+    obj = torch.load(src)
+    model.load_state_dict(obj["model_state_dict"])
+
 def run_load_checkpoint(
     src: str | os.PathLike | BinaryIO | IO[bytes],
     model: torch.nn.Module,
@@ -178,6 +185,6 @@ def run_load_checkpoint(
         int: the previously-serialized number of iterations.
     """
     obj = torch.load(src)
-    model.load_state_dict(obj["model_state_dict"])
+    load_model_checkpoint(src)
     optimizer.load_state_dict(obj["optimizer_state_dict"])
     return obj["iteration"]
