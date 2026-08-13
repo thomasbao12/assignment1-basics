@@ -530,12 +530,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    # subtract max to avoid numerical stability issues caused by exp(x) = inf
-    centered_probabilities = inputs - inputs.max(dim=-1, keepdim=True).values
-    target_probability = centered_probabilities[torch.arange(centered_probabilities.shape[0]), targets]
-
-    losses = -target_probability + centered_probabilities.exp().sum(dim=-1).log()
-    return losses.mean()
+    return utils.run_cross_entropy(inputs, targets)
 
 
 
@@ -625,12 +620,7 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    obj = {
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "iteration": iteration
-    }
-    torch.save(obj, out)
+    utils.run_save_checkpoint(model, optimizer, iteration, out)
 
 
 def run_load_checkpoint(
@@ -651,10 +641,7 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    obj = torch.load(src)
-    model.load_state_dict(obj["model_state_dict"])
-    optimizer.load_state_dict(obj["optimizer_state_dict"])
-    return obj["iteration"]
+    return utils.run_load_checkpoint(src, model, optimizer)
 
 def get_tokenizer(
     vocab: dict[int, bytes],

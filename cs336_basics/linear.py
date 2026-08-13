@@ -1,4 +1,5 @@
 import einops
+import math
 import torch
 
 class Linear(torch.nn.Module):
@@ -20,7 +21,9 @@ class Linear(torch.nn.Module):
                     ),
                     dtype=dtype,
                     device=device
-                )
+                ),
+                mean = 0,
+                std=math.sqrt(2 / (in_features + out_features)),
             )
         )
     

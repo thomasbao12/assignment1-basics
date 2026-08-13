@@ -20,13 +20,13 @@ class Attention(torch.nn.Module):
     ):
         super().__init__()
         self.num_heads = num_heads
-        self.q_proj = Linear(d_model, d_model, dtype, device)
-        self.k_proj = Linear(d_model, d_model, dtype, device)
-        self.v_proj = Linear(d_model, d_model, dtype, device)
-        self.output_proj = Linear(d_model, d_model, dtype, device)
+        self.q_proj = Linear(d_model, d_model, dtype = dtype, device = device)
+        self.k_proj = Linear(d_model, d_model, dtype = dtype, device = device)
+        self.v_proj = Linear(d_model, d_model, dtype = dtype, device = device)
+        self.output_proj = Linear(d_model, d_model, dtype = dtype, device = device)
         
         if theta is not None:
-            self.rope = RoPE(theta, d_model / num_heads, max_seq_len, device)
+            self.rope = RoPE(theta, d_model / num_heads, max_seq_len, device = device)
         else:
             self.rope = None
     

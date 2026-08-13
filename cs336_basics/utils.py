@@ -4,7 +4,9 @@ from torch import Tensor
 import einops
 import numpy as np
 import numpy.typing as npt
+import os
 import torch
+from typing import IO, Any, BinaryIO
 
 def run_get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
@@ -32,22 +34,13 @@ def run_get_batch(
         torch.from_numpy(dataset[i : i + context_length])
         for i in indices
     ]).to(device)
-    output_sequences = input_sequences + 1
+    output_sequences = torch.stack([
+        torch.from_numpy(dataset[i + 1 : i + context_length + 1])
+        for i in indices
+    ]).to(device)
     return (input_sequences, output_sequences)
 
-def init_random_weights(dim_rows, dim_cols, dtype, device) -> torch.nn.Parameter:
-    return torch.nn.Parameter(
-        torch.nn.init.trunc_normal_(
-            torch.empty(
-                dim_rows,
-                dim_cols,
-                dtype = dtype,
-                device = device,
-            )
-        )
-    )
-
-def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
+def run_softmax(in_features: Float[Tensor, " ..."], dim: int, temp: float = 1) -> Float[Tensor, " ..."]:
     """
     Given a tensor of inputs, return the output of softmaxing the given `dim`
     of the input.
@@ -62,7 +55,7 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
     """
     # subtract max to avoid numerical stability issues caused by exp(x) = inf
     centered = in_features - in_features.max(dim=dim, keepdim=True).values
-    exponentiated = centered.exp()
+    exponentiated = (centered / temp).exp()
     return exponentiated / exponentiated.sum(dim=dim, keepdim=True)
 
 def run_scaled_dot_product_attention(
@@ -70,6 +63,7 @@ def run_scaled_dot_product_attention(
     K: Float[Tensor, " ... keys d_k"],
     V: Float[Tensor, " ... keys d_v"],
     mask: Bool[Tensor, " ... queries keys"] | None = None, # default is causal mask
+    device: torch.device | None = None,
 ) -> Float[Tensor, " ... queries d_v"]:
     """
     Given key (K), query (Q), and value (V) tensors, return
@@ -90,7 +84,7 @@ def run_scaled_dot_product_attention(
         "... queries d_k, ... keys d_k -> ... queries keys"
     ) / d_k ** 0.5
     if mask is None:
-        ones = torch.ones(scaled_dot.shape, dtype=torch.bool)
+        ones = torch.ones(scaled_dot.shape, dtype=torch.bool, device = device)
         mask = torch.tril(ones)
 
     masked = torch.where(
@@ -106,3 +100,100 @@ def run_scaled_dot_product_attention(
         V,
         "... queries keys, ... keys d_v -> ... queries d_v"
     )
+
+def run_cross_entropy(
+    inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]
+) -> Float[Tensor, ""]:
+    """Given a tensor of inputs and targets, compute the average cross-entropy
+    loss across examples.
+
+    Args:
+        inputs (Float[Tensor, "batch_size vocab_size"]): inputs[i][j] is the
+            unnormalized logit of jth class for the ith example.
+        targets (Int[Tensor, "batch_size"]): Tensor of shape (batch_size,) with the index of the correct class.
+            Each value must be between 0 and `num_classes - 1`.
+
+    Returns:
+        Float[Tensor, ""]: The average cross-entropy loss across examples.
+    """
+    # subtract max to avoid numerical stability issues caused by exp(x) = inf
+    centered_probabilities = inputs - inputs.max(dim=-1, keepdim=True).values
+    target_logits = torch.gather(
+        centered_probabilities,
+        dim=-1,
+        index=targets.unsqueeze(-1),
+    ).squeeze(-1)
+
+    losses = -target_logits + centered_probabilities.exp().sum(dim=-1).log()
+    return losses.mean()
+
+def run_save_checkpoint(
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+    iteration: int,
+    out: str | os.PathLike | BinaryIO | IO[bytes],
+):
+    """
+    Given a model, optimizer, and an iteration number, serialize them to disk.
+
+    Args:
+        model (torch.nn.Module): Serialize the state of this model.
+        optimizer (torch.optim.Optimizer): Serialize the state of this optimizer.
+        iteration (int): Serialize this value, which represents the number of training iterations
+            we've completed.
+        out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
+    """
+    obj = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "iteration": iteration
+    }
+    torch.save(obj, out)
+
+def load_model_checkpoint(
+    src: str | os.PathLike | BinaryIO | IO[bytes],
+    model: torch.nn.Module
+):
+    obj = torch.load(src)
+    model.load_state_dict(obj["model_state_dict"])
+
+def run_load_checkpoint(
+    src: str | os.PathLike | BinaryIO | IO[bytes],
+    model: torch.nn.Module,
+    optimizer: torch.optim.Optimizer,
+) -> int:
+    """
+    Given a serialized checkpoint (path or file-like object), restore the
+    serialized state to the given model and optimizer.
+    Return the number of iterations that we previously serialized in
+    the checkpoint.
+
+    Args:
+        src (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialized checkpoint.
+        model (torch.nn.Module): Restore the state of this model.
+        optimizer (torch.optim.Optimizer): Restore the state of this optimizer.
+    Returns:
+        int: the previously-serialized number of iterations.
+    """
+    obj = torch.load(src)
+    load_model_checkpoint(src, model)
+    optimizer.load_state_dict(obj["optimizer_state_dict"])
+    return obj["iteration"]
+
+def sample_top_p(
+    probs: torch.Tensor,
+    p: float,
+) -> int:
+    sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+    cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+
+    # Include the token that crosses the p threshold
+    mask = cumulative_probs - sorted_probs < p
+
+    top_p_probs = sorted_probs * mask
+
+    # Renormalize
+    top_p_probs = top_p_probs / top_p_probs.sum()
+    sampled_position = torch.multinomial(top_p_probs, num_samples=1)
+
+    return sorted_indices[sampled_position].item()

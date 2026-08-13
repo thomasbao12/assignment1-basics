@@ -1,0 +1,3 @@
+corpus_train_filepath = "data/tiny_stories_train_smoke_test.txt"
+corpus_valid_filepath = "data/tiny_stories_valid_smoke_test.txt"
+tokenizer_filepath = "data/tokenizer.pkl"

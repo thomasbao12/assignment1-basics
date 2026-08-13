@@ -24,7 +24,8 @@ class TransformerBlock(torch.nn.Module):
             d_model,
             num_heads,
             max_seq_len,
-            theta
+            theta,
+            device=device
         )
         self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
         self.ffn = SwiGLU(d_model, d_ff, device, dtype)
