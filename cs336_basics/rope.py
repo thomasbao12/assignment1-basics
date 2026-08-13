@@ -17,7 +17,7 @@ class RoPE(torch.nn.Module):
         self.theta = theta
         self.d_k = d_k
         self.max_seq_length = max_seq_length
-        self.device = device        
+        self.device = device
         # TODO create a buffer of precomputed cos and sin tensors
     
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:

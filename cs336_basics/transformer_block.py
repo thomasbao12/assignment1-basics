@@ -25,10 +25,11 @@ class TransformerBlock(torch.nn.Module):
             num_heads,
             max_seq_len,
             theta,
-            device=device
+            device=device,
+            dtype=dtype
         )
         self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
-        self.ffn = SwiGLU(d_model, d_ff, device, dtype)
+        self.ffn = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
     
     def forward(
         self, 
