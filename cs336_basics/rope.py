@@ -6,10 +6,10 @@ from torch import Tensor
 
 class RoPE(torch.nn.Module):
 
-    def _init_rotation_matrices(self):
-        k = torch.arange(0, self.d_k // 2, device = self.device)
+    def _init_rotation_matrices(self, device: torch.device):
+        k = torch.arange(0, self.d_k // 2, device = device)
         frequencies = 1 / self.theta ** (2 * k / self.d_k) # shape(pairs)
-        angles = torch.arange(self.max_seq_length, device = self.device)[..., None] * frequencies[None, :] # shape(seq, pairs)
+        angles = torch.arange(self.max_seq_length, device = device)[..., None] * frequencies[None, :] # shape(seq, pairs)
         cos = angles.cos() # shape(seq, pairs)
         sin = angles.sin() # shape(seq, pairs)
         rotation_matrices = torch.stack(
@@ -32,8 +32,7 @@ class RoPE(torch.nn.Module):
         self.theta = theta
         self.d_k = d_k
         self.max_seq_length = max_seq_length
-        self.device = device
-        self._init_rotation_matrices()
+        self._init_rotation_matrices(device)
     
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         x_pairs = einops.rearrange(
