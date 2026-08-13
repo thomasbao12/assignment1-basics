@@ -1,12 +1,17 @@
 import argparse
-import tomllib
-
 import numpy as np
+import shutil
+import time
+import tomllib
 import torch
 
-import cs336_basics.utils as utils
 from cs336_basics.adamw import AdamW
+from cs336_basics.experiment_logger import ExperimentLogger
 from cs336_basics.transformer_lm import TransformerLM
+from pathlib import Path
+
+import cs336_basics.utils as utils
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -43,24 +48,64 @@ def init_transformer(model_config: dict) -> TransformerLM:
         device=device,
     )
 
+def get_validation_loss(config, transformer, token_positions, experiment_logger, step):
+    validation_file = config["data"]["validation_file"]
+    context_length = config["model"]["context_length"]
+    batch_size = config["training"]["batch_size"]
+    device = config["training"]["device"]
+    
+    
+    tokenized_corpus_valid = np.load(
+        validation_file,
+        mmap_mode="r",
+    )
+
+    with torch.no_grad():
+        input_seq, output_seq = utils.run_get_batch(
+            tokenized_corpus_valid,
+            batch_size,
+            context_length,
+            device=device,
+        )
+
+        logits = transformer(
+            input_seq,
+            token_positions,
+        )
+        
+        loss = utils.run_cross_entropy(
+            logits,
+            output_seq,
+        )
+
+    print(f"validation loss: {loss.item():.4f}")
+    experiment_logger.log(step, "valid", loss)
+
+
 def main():
     args = parse_args()
     config = load_config(args.config)
 
     # ----------------
+    # Logging
+    # ----------------
+    epoch_time = int(time.time())
+    
+    logging_dir = Path(f"logging/{epoch_time}")
+    logging_dir.mkdir()
+    shutil.copy(args.config, logging_dir)
+
+    experiment_logger = ExperimentLogger(logging_dir)
+    experiment_logger.log(0, "train", 3.14159)
+    
+    # ----------------
     # Data
     # ----------------
 
     train_file = config["data"]["train_file"]
-    validation_file = config["data"]["validation_file"]
 
     tokenized_corpus_train = np.load(
         train_file,
-        mmap_mode="r",
-    )
-
-    tokenized_corpus_valid = np.load(
-        validation_file,
         mmap_mode="r",
     )
 
@@ -80,11 +125,11 @@ def main():
 
     batch_size = training_config["batch_size"]
     max_iters = training_config["max_iters"]
-    log_every = training_config["log_every"]
+    log_training_loss_every = training_config["log_training_loss_every"]
+    log_validation_loss_every = training_config["log_validation_loss_every"]
 
     device_str = training_config["device"]
     device = None if device_str == "cpu" else device_str
-
 
     # ----------------
     # Optimizer
@@ -128,7 +173,6 @@ def main():
 
     transformer.train()
 
-    
     for step in range(max_iters):
         input_seq, output_seq = utils.run_get_batch(
                 tokenized_corpus_train,
@@ -139,22 +183,7 @@ def main():
         
         opt.zero_grad()
         logits = transformer(input_seq, token_positions)
-        '''
-        #------- DEBUG  -----
-        if step % log_every == 0:
-            from cs336_basics.scripts.decode import load_tokenizer
-            tokenizer = load_tokenizer("data/tokenizer.pkl")
-            predicted_tokens = torch.argmax(logits, dim = -1)
-            
-            print("input:")
-            print(input_seq[0])
-            print(output_seq[0])
-            print(tokenizer.decode(input_seq[0].tolist()))
-            print("predicted:")
-            print(tokenizer.decode(predicted_tokens[0].tolist()))
-            print("actual:")
-            print(tokenizer.decode(output_seq[0].tolist()))
-        '''
+        
         loss = utils.run_cross_entropy(
             logits,
             output_seq,
@@ -169,8 +198,14 @@ def main():
 
         opt.step()
 
-        if step % log_every == 0:
+        if step % log_training_loss_every == 0:
             print(f"step: {step} train loss: {loss.item():.4f}")
+            experiment_logger.log(step, "train", loss.item())
+
+        if step % log_validation_loss_every == 0:
+            get_validation_loss(config, transformer, token_positions, experiment_logger, step)
+
+        
 
     # ----------------
     # Save Checkpoint
@@ -181,32 +216,6 @@ def main():
     if output_file is not None:
         print(f"saving model checkpoint to {output_file}")
         utils.run_save_checkpoint(transformer, opt, max_iters - 1, output_file)
-
-    # ----------------
-    # Validation
-    # ----------------
-
-    transformer.eval()
-
-    with torch.no_grad():
-        input_seq, output_seq = utils.run_get_batch(
-            tokenized_corpus_valid,
-            batch_size,
-            context_length,
-            device=device,
-        )
-
-        logits = transformer(
-            input_seq,
-            token_positions,
-        )
-        
-        validation_loss = utils.run_cross_entropy(
-            logits,
-            output_seq,
-        )
-
-    print(f"validation loss: {validation_loss.item():.4f}")
 
 
 if __name__ == "__main__":
