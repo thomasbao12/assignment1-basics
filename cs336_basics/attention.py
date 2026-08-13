@@ -37,10 +37,9 @@ class Attention(torch.nn.Module):
     ) -> Float[Tensor, " ... sequence_length d_model"]:
         num_heads = self.num_heads
 
-        multihead_token_positions = einops.repeat(
+        token_positions_with_head_dimension = einops.rearrange(
             token_positions,
-            "... sequence_length -> ... num_heads sequence_length",
-            num_heads=num_heads
+            "... sequence_length -> ... 1 sequence_length",
         )
 
         q = self.q_proj.forward(in_features)
@@ -67,11 +66,11 @@ class Attention(torch.nn.Module):
         if self.rope is not None:
             rotated_multihead_q = self.rope.forward(
                     multihead_q,
-                    multihead_token_positions,
+                    token_positions_with_head_dimension,
                 )
             rotated_multihead_k = self.rope.forward(
                 multihead_k,
-                multihead_token_positions,
+                token_positions_with_head_dimension,
             )
             multihead_attention = utils.run_scaled_dot_product_attention(rotated_multihead_q, rotated_multihead_k, multihead_v)
         else:
