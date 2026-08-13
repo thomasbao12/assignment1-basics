@@ -197,3 +197,6 @@ def sample_top_p(
     sampled_position = torch.multinomial(top_p_probs, num_samples=1)
 
     return sorted_indices[sampled_position].item()
+
+def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
+    return in_features * torch.sigmoid(in_features)

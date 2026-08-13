@@ -18,6 +18,7 @@ from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
 from cs336_basics.rmsnorm import RMSNorm
+from cs336_basics.silu import SiLU
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.tokenizer import Tokenizer
 from cs336_basics.train_bpe import train_bpe
@@ -472,7 +473,7 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    return utils.run_silu(in_features)
 
 
 def run_get_batch(
