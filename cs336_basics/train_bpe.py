@@ -1,9 +1,5 @@
 from collections import defaultdict
 from collections.abc import Iterator
-from cs336_basics.tokenizer import (
-    encode_part_into_bytes, 
-    _merge_pair,
-)
 from cs336_basics.iter_parts import Part, NormalPart, iter_parts
 from typing import BinaryIO
 
@@ -130,27 +126,27 @@ class BPE:
             h -= 1
         return h
 
-    def _get_merge_positions(self, x: bytes, y: bytes) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-        merge_positions: list[
-            tuple[
-                tuple[int, int],
-                tuple[int, int]
-            ]
-        ] = []
+    def _get_merge_positions(self, x: bytes, y: bytes):
+        merge_positions = []
+        positions = self.bytes_to_positions[x]
+
+        if x == y:
+            positions = sorted(positions)
+
         last_merge_boundary = (-1, -1)
-        for (i, j) in sorted(self.bytes_to_positions[x]):
+
+        for i, j in positions:
             if (i, j) == last_merge_boundary:
                 continue
-            
+
             k = j + len(x)
+
             if self.position_to_bytes[i].get(k) == y:
-                merge_positions.append(
-                    (
-                        (i,j),
-                        (i,k)
-                    )
-                )
-                last_merge_boundary = i, j + len(x)
+                merge_positions.append(((i, j), (i, k)))
+
+                if x == y:
+                    last_merge_boundary = (i, k)
+
         return merge_positions
     
     def merge_dry_run(self) -> bool:
