@@ -6,17 +6,26 @@ import cProfile
 import pstats
 
 
+def get_merge_pairs_to_ranks(
+    list_of_bytes: list[bytes],
+) -> dict[tuple[bytes, bytes], int]:
+    potential_merges = defaultdict(int)
+
+    for i in range(0, len(list_of_bytes) - 1):
+        x, y = list_of_bytes[i], list_of_bytes[i + 1]
+        potential_merges[(x, y)] += 1
+
+    return potential_merges
+
+
 class BPE:
     DEBUG = False
     PROFILE = True
 
     """
     invariants:
-    - bytes to positions and position to bytes are inverse dictionaries
-    - we should be able to reconstruct each part from the corresponding
-      position_to_bytes
-    - byte counts individually of bytes_pair_to_counts should equal the
-      byte counts of parts
+    - we should be able to reconstruct each part from position_to_bytes
+    - byte pair counts should agree with the actual adjacent pairs
     """
 
     def _assert_position_to_bytes_is_equivalent_to_parts(self):
@@ -38,15 +47,6 @@ class BPE:
                 next_index, _ = sorted_items[j + 1]
 
                 assert index + len(byte_str) == next_index
-
-    def _assert_position_to_bytes_equivalent_to_bytes_to_position(self):
-        for b, positions in self.bytes_to_positions.items():
-            for i, j in positions:
-                assert self.position_to_bytes[i][j] == b
-
-        for i, v in self.position_to_bytes.items():
-            for j, b in v.items():
-                assert (i, j) in self.bytes_to_positions[b]
 
     def _assert_merge_is_merged(
         self,
@@ -97,13 +97,8 @@ class BPE:
         self.merged = []
         self.vocab = vocab
 
-        self.bytes_to_positions: dict[
-            bytes,
-            set[tuple[int, int]],
-        ] = defaultdict(set)
-
-        # first index is part
-        # second index is byte offset inside part
+        # First index is part.
+        # Second index is original byte offset inside the part.
         self.position_to_bytes: dict[
             int,
             dict[int, bytes],
@@ -116,7 +111,10 @@ class BPE:
 
         # (x, y) -> positions where x is immediately followed by y.
         #
-        # Each position is (part_index, byte_offset_of_x).
+        # Each position is:
+        #
+        #     (part_index, byte_offset_of_x)
+        #
         self.pair_to_positions: dict[
             tuple[bytes, bytes],
             set[tuple[int, int]],
@@ -131,20 +129,15 @@ class BPE:
                 self.bytes_pair_to_counts[(x, y)] += 1
                 self.pair_to_positions[(x, y)].add((i, j))
 
-                self.bytes_to_positions[x].add((i, j))
                 self.position_to_bytes[i][j] = x
 
             if len(list_of_bytes) > 0:
                 j = len(list_of_bytes) - 1
-                b = list_of_bytes[j]
-
-                self.bytes_to_positions[b].add((i, j))
-                self.position_to_bytes[i][j] = b
+                self.position_to_bytes[i][j] = list_of_bytes[j]
 
         if BPE.DEBUG:
             print("init: about to assert")
 
-            self._assert_position_to_bytes_equivalent_to_bytes_to_position()
             self._assert_position_to_bytes_is_equivalent_to_parts()
             self._assert_byte_pair_counts_are_accurate()
 
@@ -190,11 +183,11 @@ class BPE:
         #
         # Example:
         #
-        # x x x
-        # ^ ^
-        #   ^ ^
+        #     x x x
+        #     ^ ^
+        #       ^ ^
         #
-        # We preserve left-to-right greedy merging.
+        # Preserve left-to-right greedy merging.
         merge_positions = []
 
         last_merge_boundary = (-1, -1)
@@ -217,7 +210,6 @@ class BPE:
         return merge_positions
 
     def merge_dry_run(self) -> bool:
-        # TODO use sorted dict
         max_count, max_merge = max(
             [
                 (count, pair)
@@ -243,12 +235,12 @@ class BPE:
         #
         #     A X Y B
         #
-        # We need to remove:
+        # Remove:
         #
         #     (A, X)
         #     (Y, B)
         #
-        # (X, Y) is removed globally below.
+        # (X, Y) gets removed globally below.
         # ------------------------------------------------------------
 
         pairs_of_positions = set()
@@ -287,8 +279,6 @@ class BPE:
 
         # ------------------------------------------------------------
         # Remove the merged pair itself.
-        #
-        # All selected (x, y) occurrences disappear.
         # ------------------------------------------------------------
 
         self.bytes_pair_to_counts.pop((x, y), None)
@@ -296,14 +286,11 @@ class BPE:
 
         # ------------------------------------------------------------
         # Perform the actual merges.
+        #
+        # k disappears. j survives and now contains x + y.
         # ------------------------------------------------------------
 
         for (i, j), (_, k) in merge_positions:
-            self.bytes_to_positions[x].remove((i, j))
-            self.bytes_to_positions[y].remove((i, k))
-
-            self.bytes_to_positions[merged_bytes].add((i, j))
-
             self.position_to_bytes[i][j] = merged_bytes
             del self.position_to_bytes[i][k]
 
@@ -318,8 +305,6 @@ class BPE:
         #
         #     (A, XY)
         #     (XY, B)
-        #
-        # Only newly merged positions can have changed adjacency.
         # ------------------------------------------------------------
 
         pairs_of_positions = set()
@@ -360,7 +345,6 @@ class BPE:
             print("merge_dry_run: about to assert")
 
             self._assert_position_to_bytes_is_equivalent_to_parts()
-            self._assert_position_to_bytes_equivalent_to_bytes_to_position()
             self._assert_merge_is_merged(max_merge)
             self._assert_byte_pair_counts_are_accurate()
 
@@ -374,7 +358,6 @@ class BPE:
                 "merged": self.merged,
                 "vocab_size": len(self.vocab),
                 "bytes_pair_to_counts": self.bytes_pair_to_counts,
-                "bytes_to_positions": self.bytes_to_positions,
                 "pair_to_positions": self.pair_to_positions,
                 "position_to_bytes": self.position_to_bytes,
             }
