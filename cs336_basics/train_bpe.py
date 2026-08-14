@@ -23,6 +23,7 @@ def get_merge_pairs_to_ranks(list_of_bytes: list[bytes]) -> dict[tuple[bytes, by
 
 class BPE:
     DEBUG = False
+    PROFILE = True
     '''
     invariants: 
     - bytes to positions and position to bytes are inverse dictionaries
@@ -251,7 +252,7 @@ def train_bpe(
 
     parts_iterator = iter_parts(input_path, special_tokens)    
     
-    if BPE.DEBUG:
+    if BPE.PROFILE:
         profiler = cProfile.Profile()
         profiler.enable()
     
@@ -262,7 +263,7 @@ def train_bpe(
             break
         
 
-    if BPE.DEBUG:
+    if BPE.PROFILE:
         profiler.disable()
         stats = pstats.Stats(profiler)
         stats.sort_stats("cumulative")
