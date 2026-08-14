@@ -1,9 +1,11 @@
 from collections import defaultdict
+from collections.abc import Iterator
 from cs336_basics.tokenizer import (
     encode_part_into_bytes, 
     _merge_pair,
-    split_into_parts_and_pretokenize
 )
+from cs336_basics.iter_parts import Part, NormalPart, iter_parts
+from typing import BinaryIO
 
 import cProfile
 import pstats
@@ -30,6 +32,7 @@ class BPE:
 
     def _assert_position_to_bytes_is_equivalent_to_parts(self):
         for i, part in enumerate(self.parts):
+            part = part.data
             reconstructed_part = list()
             sorted_items = sorted(self.position_to_bytes[i].items())
             for _, value in sorted_items:
@@ -79,7 +82,7 @@ class BPE:
             i: bytes([i])
             for i in range(256)
         },
-        parts: list[list[bytes]] = []
+        parts: Iterator[Part] = [],
     ):
         self.parts = parts
         self.merged = []
@@ -87,10 +90,13 @@ class BPE:
         
         self.bytes_to_positions: dict[bytes, set] = defaultdict(set)
         # when sorted and merged, this should be equivalent to parts
+        # first index is part
+        # second index is byte offset inside part
         self.position_to_bytes: dict[int, dict[int, bytes]] = defaultdict(dict)
         self.bytes_pair_to_counts: dict[tuple(bytes, bytes), int] = defaultdict(int)
 
-        for i, list_of_bytes in enumerate(self.parts):
+        for i, part in enumerate(self.parts):
+            list_of_bytes = part.data
             for j in range(len(list_of_bytes) - 1):
                 x, y = list_of_bytes[j], list_of_bytes[j + 1]
                 self.bytes_pair_to_counts[(x, y)] += 1
@@ -101,6 +107,7 @@ class BPE:
                 self.bytes_to_positions[list_of_bytes[j]].add((i, j))
                 self.position_to_bytes[i][j] = list_of_bytes[j]
 
+        
         if BPE.DEBUG:
             print("init: about to assert")
             self._assert_position_to_bytes_equivalent_to_bytes_to_position()
@@ -121,6 +128,30 @@ class BPE:
         while h > 0 and h not in valid_positions:
             h -= 1
         return h
+
+    def _get_merge_positions(self, x: bytes, y: bytes) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+        merge_positions: list[
+            tuple[
+                tuple[int, int],
+                tuple[int, int]
+            ]
+        ] = []
+        last_merge_boundary = (-1, -1)
+        for (i, j) in sorted(self.bytes_to_positions[x]):
+            if (i, j) == last_merge_boundary:
+                continue
+            
+            k = j + len(x)
+            if self.position_to_bytes[i].get(k) == y:
+                merge_positions.append(
+                    (
+                        (i,j),
+                        (i,k)
+                    )
+                )
+                last_merge_boundary = i, j + len(x)
+        return merge_positions
+    
     def merge_dry_run(self) -> bool:
         # TODO use sorted dict
         max_count, max_merge = max([
@@ -133,23 +164,19 @@ class BPE:
         x, y = max_merge 
         merged_bytes = x + y
 
-        # decrement byte pair counts affected by the merge prior to merging
-        # we want to avoid decrementing, so we use a set
+        self.vocab[len(self.vocab)] = merged_bytes
+        self.merged.append(max_merge)
+
+        # update book keeping
+
+        merge_positions = self._get_merge_positions(x, y)
+        # decrement byte pair counts that include the merge 
+        # BUT are not the merge itself
         pairs_of_positions = set()
-        for (i, j) in self.bytes_to_positions[x]:
-            k = j + len(x)
-            
-            if self.position_to_bytes[i].get(k) != y:
-                # skip if it doesn't match the merge pair
-                continue
-            
-            pairs_of_positions.add((
-                (i, j),
-                (i, k)
-            ))
+        for (i, j), (i, k) in merge_positions:
             # check if we need to update the position after the merged bytes
-            l = j + len(x) + len(y)
-            if l < len(self.parts[i]):
+            l = k + len(y)
+            if l in self.position_to_bytes[i].keys():
                 pairs_of_positions.add(((i, k), (i, l)))
 
             h = self._find_previous_position(i, j)
@@ -158,37 +185,20 @@ class BPE:
                     (i, h),
                     (i, j)
                 ))
-                         
-            
+                                     
         for (i1, j1), (i2,j2) in pairs_of_positions:
             a = self.position_to_bytes[i1][j1]
             b = self.position_to_bytes[i2][j2]
             self.bytes_pair_to_counts[a,b] -= 1
 
-        self.vocab[len(self.vocab)] = merged_bytes
-        self.merged.append(max_merge)
-
+        # handle merge
         del self.bytes_pair_to_counts[(x, y)]
-
-        # update bytes_to_positions and positions_to_bytes
-        bytes_and_positions_to_delete: tuple[bytes, tuple[int, int]] = []
-        last_merge_boundary = (-1, -1)
-        for (i, j) in sorted(self.bytes_to_positions[x]):
-            if (i, j) == last_merge_boundary:
-                continue
-            
-            k = j + len(x)
-            if self.position_to_bytes[i].get(k) == y:
-                self.bytes_to_positions[merged_bytes].add((i, j))
-                bytes_and_positions_to_delete.append((x, (i,j)))
-                bytes_and_positions_to_delete.append((y, (i,k)))
-                
-                self.position_to_bytes[i][j] = merged_bytes 
-                del self.position_to_bytes[i][j + len(x)] 
-                last_merge_boundary = i, j + len(x)
-        
-        for (b, (i, j)) in bytes_and_positions_to_delete:
-            self.bytes_to_positions[b].remove((i, j))
+        for (i, j), (i, k) in merge_positions:
+            self.bytes_to_positions[x].remove((i, j))
+            self.bytes_to_positions[y].remove((i, k))
+            self.bytes_to_positions[merged_bytes].add((i, j))
+            self.position_to_bytes[i][j] = merged_bytes
+            del self.position_to_bytes[i][k]
 
         # increment byte pair counts affected by the merge after merging
         # merged bytes could be consecutive, so we want to avoid double counting
@@ -196,7 +206,7 @@ class BPE:
         pairs_of_positions = set()
         for (i, j) in self.bytes_to_positions[merged_bytes]:    
             k = j + len(merged_bytes)
-            if k < len(self.parts[i]):
+            if k in self.position_to_bytes[i].keys():
                 pairs_of_positions.add(((i, j), (i, k)))                
             
             h = self._find_previous_position(i, j)
@@ -239,22 +249,17 @@ def train_bpe(
     for special_token in special_tokens:
         vocab[len(vocab)] = special_token.encode('utf-8')
 
-    # todo support multiprocessing with chunking
-    with open(input_path) as f:
-        text = f.read()
-        parts = [
-            encode_part_into_bytes(part)
-            for part in split_into_parts_and_pretokenize(text, special_tokens)
-        ]
-        if BPE.DEBUG:
-            profiler = cProfile.Profile()
-            profiler.enable()
-        
-        bpe = BPE(vocab, parts)
-        while len(bpe.vocab) < vocab_size:
-            did_merge = bpe.merge_dry_run()
-            if not did_merge:
-                break
+    parts_iterator = iter_parts(input_path, special_tokens)    
+    
+    if BPE.DEBUG:
+        profiler = cProfile.Profile()
+        profiler.enable()
+    
+    bpe = BPE(vocab, parts_iterator)
+    while len(bpe.vocab) < vocab_size:
+        did_merge = bpe.merge_dry_run()
+        if not did_merge:
+            break
         
 
     if BPE.DEBUG:
@@ -267,20 +272,23 @@ def train_bpe(
     return (bpe.vocab, bpe.merged)
 
 if __name__ == "__main__":
-    parts = [[
-        b'1',
-        b'1',
-        b'1',
-        b'1',
-        b'1',
-        b'1',
-        b'1'
-    ]]
+    BPE.DEBUG = True
+    parts_iterator = [
+        NormalPart([
+            b'1',
+            b'1',
+            b'1',
+            b'1',
+            b'1',
+            b'1',
+            b'1',
+        ]),
+    ].__iter__()
     vocab = {
         i: bytes([i])
         for i in range(256)
     }
-    bpe = BPE(vocab, parts)
+    bpe = BPE(vocab, parts_iterator)
     bpe.merge_dry_run()
     bpe.merge_dry_run()
     bpe.merge_dry_run()
