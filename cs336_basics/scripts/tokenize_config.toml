@@ -2,7 +2,6 @@
 #merges_pickle = "data/owt/merges.pkl"
 #vocab_pickle = "data/owt/vocab.pkl"
 
-#corpus_filepath = "data/TinyStoriesV2-GPT4-train.txt"
-corpus_filepath = "data/samples/tiny-stories-10-docs.txt"
+corpus_filepath = "data/TinyStoriesV2-GPT4-valid.txt"
 merges_pickle = "data/tiny-stories/merges.pkl"
 vocab_pickle = "data/tiny-stories/vocab.pkl"

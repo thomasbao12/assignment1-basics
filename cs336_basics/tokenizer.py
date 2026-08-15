@@ -66,7 +66,9 @@ class Tokenizer:
         self.special_bytes = set([
             token.encode("UTF-8") for token in self.special_tokens
         ])
-            
+
+        self._encode_cache: dict[bytes, tuple[int, ...]] = {}
+    
     
     def from_files(
         cls, 
@@ -77,21 +79,22 @@ class Tokenizer:
         raise NotImplementedError()
     
     def encode_bytes(self, bytestring: bytes) -> list[int]:
+        cached = self._encode_cache.get(bytestring)
+        if cached is not None:
+            return cached
+
         parts = [bytes([b]) for b in bytestring]
+
         while len(parts) >= 2:
             parts, merged = merge_pair(
                 parts,
-                self.merge_pairs_to_ranks
+                self.merge_pairs_to_ranks,
             )
             if merged is None:
                 break
-            
-        
-        ids = list()
-        for b in parts:
-            ids.append(
-                self.bytes_to_id[b]
-            )
+
+        ids = [self.bytes_to_id[b] for b in parts]
+        self._encode_cache[bytestring] = tuple(ids)
         return ids
 
 
