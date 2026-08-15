@@ -9,10 +9,12 @@ import tomllib
 import torch
 import cs336_basics.utils
 
-def load_tokenizer(tokenizer_filepath: str):
-    with open(tokenizer_filepath, "rb") as f:
-        tokenizer: Tokenizer = pickle.load(f)
-    return tokenizer
+def load_tokenizer(config):
+    with open(config["vocab_pickle"], "rb") as f:
+        vocab = pickle.load(f)
+    with open(config["merges_pickle"], "rb") as f:
+        merges = pickle.load(f)
+    return Tokenizer(vocab, merges, special_tokens=["<|endoftext|>"])
 
 def load_config(config_path: str) -> dict:
     with open(config_path, "rb") as f:
@@ -25,7 +27,7 @@ if __name__ == "__main__":
 
     config = load_config(args.config_filepath)
 
-    tokenizer = load_tokenizer(config["tokenizer_filepath"])
+    tokenizer = load_tokenizer(config)
 
     #utils.run_load_checkpoint(config["model_checkpoint"])
 
