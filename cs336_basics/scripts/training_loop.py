@@ -52,7 +52,7 @@ def get_validation_loss(config, transformer, token_positions, experiment_logger,
     validation_file = config["data"]["validation_file"]
     context_length = config["model"]["context_length"]
     batch_size = config["training"]["batch_size"]
-    device = config["training"]["device"]
+    device = config["model"]["device"]
     
     
     tokenized_corpus_valid = np.load(
@@ -114,6 +114,8 @@ def main():
     # ----------------
 
     model_config = config["model"]
+    device_str = model_config["device"]
+    device = None if device_str == "cpu" else device_str
 
     transformer = init_transformer(model_config)
 
@@ -128,8 +130,7 @@ def main():
     log_training_loss_every = training_config["log_training_loss_every"]
     log_validation_loss_every = training_config["log_validation_loss_every"]
 
-    device_str = training_config["device"]
-    device = None if device_str == "cpu" else device_str
+    
 
     # ----------------
     # Optimizer
