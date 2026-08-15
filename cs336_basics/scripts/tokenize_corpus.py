@@ -5,7 +5,6 @@ import tomllib
 import torch
 
 from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.train_bpe import train_bpe
 from pathlib import Path
 
 def load_config(config_path: str) -> dict:
@@ -30,11 +29,11 @@ def main():
 
     config = load_config(args.config_filepath)
     corpus_train_filepath = config["corpus_train_filepath"]
-    vocab, merges = train_bpe(
-        corpus_train_filepath,
-        1000,
-        SPECIAL_TOKENS,
-    )
+
+    with open(config["merges_pickle"], "rb") as f:
+        merges = pickle.load(f)
+    with open(config["vocab_pickle"], "rb") as f:
+        vocab = pickle.load(f)
 
     tokenizer = Tokenizer(
         vocab,

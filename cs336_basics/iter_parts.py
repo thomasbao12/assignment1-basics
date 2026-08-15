@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
+import os
 import regex
 
 @dataclass(frozen=True)
@@ -21,16 +22,20 @@ PAT = regex.compile(
     r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 )
 
+
 def pretokenize(data: bytes) -> Iterator[NormalPart]:
     text = data.decode("utf-8")
 
-    for match in PAT.finditer(text):
-        yield NormalPart(match.group().encode("utf-8"))
+    # use findall since data is small
+    for token in PAT.findall(text):
+        yield NormalPart(token.encode("utf-8"))
 
 
 def iter_parts(
     input_path: str | Path,
     special_tokens: list[str],
+    start: int = 0,
+    end: int | None = None,
     chunk_size: int = 1024 * 1024,
 ) -> Iterator[Part]:
     special_token_bytes = [
@@ -39,9 +44,22 @@ def iter_parts(
     ]
 
     with open(input_path, "rb") as f:
-        buffer = b""
+        if end is None:
+            f.seek(0, os.SEEK_END)
+            end = f.tell()
 
-        while chunk := f.read(chunk_size):
+        f.seek(start)
+
+        buffer = b""
+        remaining = end - start
+
+        while remaining > 0:
+            chunk = f.read(min(chunk_size, remaining))
+
+            if not chunk:
+                break
+
+            remaining -= len(chunk)
             buffer += chunk
 
             while True:

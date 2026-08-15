@@ -1,3 +1,6 @@
 corpus_train_filepath = "data/tiny_stories_train_smoke_test.txt"
 corpus_valid_filepath = "data/tiny_stories_valid_smoke_test.txt"
+merges_pickle = "data/merges.pkl"
+vocab_pickle = "data/vocab.pkl"
+
 tokenizer_filepath = "data/tokenizer.pkl"
