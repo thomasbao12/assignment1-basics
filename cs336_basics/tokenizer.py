@@ -9,20 +9,28 @@ from cs336_basics.iter_parts import (
 )
             
 def _merge_pair(
-    list_of_bytes: list[bytes],
-    pair: tuple[bytes, bytes]    
+    tokens: list[bytes],
+    pair: tuple[bytes, bytes],
 ) -> list[bytes]:
-    for i in range(len(list_of_bytes) - 1):
-        x, y = list_of_bytes[i], list_of_bytes[i + 1]
-        if (x, y) == pair:
-            return list_of_bytes[:i] + [
-                b''.join([
-                    list_of_bytes[i], 
-                    list_of_bytes[i + 1]
-                ])
-            ] + _merge_pair(list_of_bytes[i + 2:], pair)
+    x, y = pair
+    merged = x + y
 
-    return list_of_bytes
+    result = []
+    i = 0
+
+    while i < len(tokens):
+        if (
+            i + 1 < len(tokens)
+            and tokens[i] == x
+            and tokens[i + 1] == y
+        ):
+            result.append(merged)
+            i += 2
+        else:
+            result.append(tokens[i])
+            i += 1
+
+    return result
 
 def merge_pair(
     list_of_bytes: list[bytes],
