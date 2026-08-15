@@ -4,17 +4,14 @@ from typing import Iterator
 
 import regex
 
-def bytes_to_list(x: bytes) -> list[bytes]:
-    return [bytes([b]) for b in x]
-
 @dataclass(frozen=True)
 class NormalPart:
-    data: list[bytes]
+    data: bytes
 
 
 @dataclass(frozen=True)
 class SpecialPart:
-    data: list[bytes]
+    data: bytes
 
 
 Part = NormalPart | SpecialPart
@@ -28,7 +25,7 @@ def pretokenize(data: bytes) -> Iterator[NormalPart]:
     text = data.decode("utf-8")
 
     for match in PAT.finditer(text):
-        yield NormalPart(bytes_to_list(match.group().encode("utf-8")))
+        yield NormalPart(match.group().encode("utf-8"))
 
 
 def iter_parts(
@@ -61,7 +58,7 @@ def iter_parts(
                 if position > 0:
                     yield from pretokenize(buffer[:position])
 
-                yield SpecialPart([special_token])
+                yield SpecialPart(special_token)
 
                 buffer = buffer[
                     position + len(special_token):
@@ -133,16 +130,16 @@ if __name__ == "__main__":
         print(part)
 
     expected = [
-        NormalPart(bytes_to_list(b"hello")),
-        NormalPart(bytes_to_list(b" world")),
-        SpecialPart([b"<|endoftext|>"]),
-        NormalPart(bytes_to_list(b"this")),
-        NormalPart(bytes_to_list(b" is")),
-        NormalPart(bytes_to_list(b" story")),
-        NormalPart(bytes_to_list(b" two")),
-        SpecialPart([b"<|endoftext|>"]),
-        NormalPart(bytes_to_list(b"final")),
-        NormalPart(bytes_to_list(b" story")),
+        NormalPart(b"hello"),
+        NormalPart(b" world"),
+        SpecialPart(b"<|endoftext|>"),
+        NormalPart(b"this"),
+        NormalPart(b" is"),
+        NormalPart(b" story"),
+        NormalPart(b" two"),
+        SpecialPart(b"<|endoftext|>"),
+        NormalPart(b"final"),
+        NormalPart(b" story"),
     ]
 
     assert parts == expected

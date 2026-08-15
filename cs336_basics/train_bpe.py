@@ -4,13 +4,15 @@ import pstats
 from collections import Counter
 from collections.abc import Iterable
 from cs336_basics.bpe import BPE, WeightedPart
-from cs336_basics.iter_parts import iter_parts, Part
+from cs336_basics.iter_parts import iter_parts, Part, NormalPart, SpecialPart
 from dataclasses import dataclass
 
 
 def compress_parts(parts: Iterable[Part]) -> list[WeightedPart]:
     counts = Counter(
-        tuple(part.data)
+        tuple(
+            [bytes([b]) for b in part.data]
+        ) if isinstance(part, NormalPart) else tuple([part.data])
         for part in parts
     )
 
@@ -31,6 +33,10 @@ def train_bpe(
     dict[int, bytes],
     list[tuple[bytes, bytes]],
 ]:
+    if BPE.PROFILE:
+        profiler = cProfile.Profile()
+        profiler.enable()
+
     vocab = {
         i: bytes([i])
         for i in range(256)
@@ -45,21 +51,17 @@ def train_bpe(
     )
 
     compressed_parts = compress_parts(parts_iterator)
-
-    if BPE.PROFILE:
-        profiler = cProfile.Profile()
-        profiler.enable()
-
     bpe = BPE(
         vocab,
         compressed_parts,
     )
-
+    
     while len(bpe.vocab) < vocab_size:
         did_merge = bpe.merge_dry_run()
 
         if not did_merge:
             break
+    
 
     if BPE.PROFILE:
         profiler.disable()
@@ -78,8 +80,8 @@ if __name__ == "__main__":
     BPE.DEBUG = True
 
     parts_iterator = [
-        NormalPart(
-            [
+        WeightedPart(
+            tuple([
                 b"1",
                 b"1",
                 b"1",
@@ -87,9 +89,10 @@ if __name__ == "__main__":
                 b"1",
                 b"1",
                 b"1",
-            ]
+            ]),
+            1
         ),
-    ].__iter__()
+    ]
 
     vocab = {
         i: bytes([i])

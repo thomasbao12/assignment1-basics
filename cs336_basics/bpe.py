@@ -110,7 +110,7 @@ class BPE:
             tuple[bytes, bytes],
             set[tuple[int, int]],
         ] = defaultdict(set)
-
+        
         for i, part in enumerate(parts):
             tokens = part.data
 
