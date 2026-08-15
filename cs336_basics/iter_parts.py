@@ -5,6 +5,7 @@ from typing import Iterator
 import os
 import regex
 
+
 @dataclass(frozen=True)
 class NormalPart:
     data: bytes
@@ -26,9 +27,49 @@ PAT = regex.compile(
 def pretokenize(data: bytes) -> Iterator[NormalPart]:
     text = data.decode("utf-8")
 
-    # use findall since data is small
     for token in PAT.findall(text):
         yield NormalPart(token.encode("utf-8"))
+
+
+def iter_parts_from_bytes(
+    data: bytes,
+    special_tokens: list[str],
+) -> Iterator[Part]:
+    special_token_bytes = [
+        token.encode("utf-8")
+        for token in special_tokens
+    ]
+
+    while data:
+        match = _find_next_special_token(
+            data,
+            special_token_bytes,
+        )
+
+        if match is None:
+            yield from pretokenize(data)
+            return
+
+        position, special_token = match
+
+        if position > 0:
+            yield from pretokenize(data[:position])
+
+        yield SpecialPart(special_token)
+
+        data = data[
+            position + len(special_token):
+        ]
+
+
+def iter_parts_from_text(
+    text: str,
+    special_tokens: list[str],
+) -> Iterator[Part]:
+    yield from iter_parts_from_bytes(
+        text.encode("utf-8"),
+        special_tokens,
+    )
 
 
 def iter_parts(
@@ -90,11 +131,6 @@ def _find_next_special_token(
     data: bytes,
     special_tokens: list[bytes],
 ) -> tuple[int, bytes] | None:
-    """
-    Return (position, token) for the earliest special token in data.
-
-    If multiple special tokens begin at the same position, prefer the longest.
-    """
     best_position: int | None = None
     best_token: bytes | None = None
 

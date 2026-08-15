@@ -2,8 +2,8 @@ import pickle
 from cs336_basics.train_bpe import train_bpe
 
 def main():
-    corpus_filepath = "data/TinyStoriesV2-GPT4-train.txt"
-    vocab_size = 10000
+    corpus_filepath = "data/owt_train.txt"
+    vocab_size = 32000
     special_tokens = ["<|endoftext|>"]
 
     vocab, merges = train_bpe(corpus_filepath, vocab_size, special_tokens)
