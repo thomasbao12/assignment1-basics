@@ -182,6 +182,7 @@ def main():
             )
         
         opt.zero_grad()
+
         logits = transformer(input_seq, token_positions)
         
         loss = utils.run_cross_entropy(

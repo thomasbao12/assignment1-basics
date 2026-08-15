@@ -33,11 +33,11 @@ def run_get_batch(
     input_sequences = torch.stack([
         torch.from_numpy(dataset[i : i + context_length])
         for i in indices
-    ]).to(device)
+    ]).to(device).to(torch.int)
     output_sequences = torch.stack([
         torch.from_numpy(dataset[i + 1 : i + context_length + 1])
         for i in indices
-    ]).to(device)
+    ]).to(device).to(torch.int)
     return (input_sequences, output_sequences)
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int, temp: float = 1) -> Float[Tensor, " ..."]:
