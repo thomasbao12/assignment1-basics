@@ -119,6 +119,10 @@ class Tokenizer:
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         for text in iterable:
             yield from self.encode(text)
+
+    def encode_from_iterable_parts(self, iterable: Iterable[Part]) -> Iterator[int]:
+        for part in iterable:
+            yield from self.encode_bytes(part.data)
     
     def decode(self, ids: list[int]) -> str:
         bytes = b""

@@ -33,7 +33,7 @@ def main():
     )
 
     parts = iter_parts(config["corpus_filepath"], SPECIAL_TOKENS)
-    tokens = tokenizer.encode_iterable(parts)
+    tokens = tokenizer.encode_from_iterable_parts(parts)
     tokens_array = np.fromiter(tokens, dtype = np.uint16)
     print(len(tokens_array))    
 
