@@ -3,6 +3,8 @@ from collections.abc import Iterator
 from cs336_basics.iter_parts import Part, NormalPart, iter_parts
 from dataclasses import dataclass
 
+from time import perf_counter
+
 @dataclass
 class WeightedPart:
     data: tuple[bytes, ...]
@@ -201,6 +203,8 @@ class BPE:
         return merge_positions
 
     def merge_dry_run(self) -> bool:
+        t0 = perf_counter()
+
         max_count, max_merge = max(
             [
                 (count, pair)
@@ -208,6 +212,8 @@ class BPE:
             ]
         )
 
+        t1 = perf_counter()
+        
         if max_count == 0:
             return False
 
@@ -219,6 +225,7 @@ class BPE:
 
         merge_positions = self._get_merge_positions(x, y)
 
+        t2 = perf_counter()
         # ------------------------------------------------------------
         # Remove old adjacent-pair bookkeeping around each merge.
         #
@@ -259,6 +266,8 @@ class BPE:
                     )
                 )
 
+        t3 = perf_counter()
+
         for (i1, j1), (i2, j2) in pairs_of_positions:
             a = self.position_to_bytes[i1][j1]
             b = self.position_to_bytes[i2][j2]
@@ -267,6 +276,8 @@ class BPE:
 
             self.bytes_pair_to_counts[pair] -= self.parts[i1].count
             self.pair_to_positions[pair].remove((i1, j1))
+
+        t4 = perf_counter()
 
         # ------------------------------------------------------------
         # Remove the merged pair itself.
@@ -284,6 +295,8 @@ class BPE:
         for (i, j), (_, k) in merge_positions:
             self.position_to_bytes[i][j] = merged_bytes
             del self.position_to_bytes[i][k]
+
+        t5 = perf_counter()
 
         # ------------------------------------------------------------
         # Add new adjacent-pair bookkeeping.
@@ -323,6 +336,8 @@ class BPE:
                     )
                 )
 
+        t6 = perf_counter()
+
         for (i1, j1), (i2, j2) in pairs_of_positions:
             pair = (
                 self.position_to_bytes[i1][j1],
@@ -331,6 +346,8 @@ class BPE:
 
             self.bytes_pair_to_counts[pair] += self.parts[i1].count
             self.pair_to_positions[pair].add((i1, j1))
+
+        t7 = perf_counter()
 
         if BPE.DEBUG:
             print("merge_dry_run: about to assert")
@@ -341,6 +358,17 @@ class BPE:
 
             print("merge_dry_run: passed assert")
 
+        if len(self.vocab) % 100 == 0:
+            print(
+                len(merge_positions),
+                "max", t1 - t0,
+                "positions", t2 - t1,
+                "find-old", t3 - t2,
+                "remove", t4 - t3,
+                "merge", t5 - t4,
+                "find-new", t6 - t5,
+                "add", t7 - t6,
+            )
         return True
 
     def __repr__(self):

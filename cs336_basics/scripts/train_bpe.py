@@ -2,7 +2,7 @@ import pickle
 from cs336_basics.train_bpe import train_bpe
 
 def main():
-    corpus_filepath = "data/TinyStoriesV2-GPT4-valid.txt"
+    corpus_filepath = "data/TinyStoriesV2-GPT4-train.txt"
     vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
 
