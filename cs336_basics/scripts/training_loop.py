@@ -68,10 +68,12 @@ def get_validation_loss(config, transformer, token_positions, experiment_logger,
             device=device,
         )
 
+        transformer.collect_layer_norms = True
         logits = transformer(
             input_seq,
             token_positions,
         )
+        transformer.collect_layer_norms = False
         
         loss = utils.run_cross_entropy(
             logits,
@@ -80,6 +82,11 @@ def get_validation_loss(config, transformer, token_positions, experiment_logger,
 
     print(f"validation loss: {loss.item():.4f}")
     experiment_logger.log(step, "valid", loss.item())
+    experiment_logger.log_layer_norms(
+        step,
+        "valid",
+        transformer.last_layer_output_norms,
+    )
 
 
 def main():
@@ -205,6 +212,10 @@ def main():
         
         opt.zero_grad()
 
+        transformer.collect_layer_norms = (
+            step % log_training_loss_every == 0
+            or step % log_validation_loss_every == 0
+        )
         logits = transformer(input_seq, token_positions)
         
         loss = utils.run_cross_entropy(
@@ -224,6 +235,11 @@ def main():
         if step % log_training_loss_every == 0:
             print(f"step: {step} train loss: {loss.item():.4f}")
             experiment_logger.log(step, "train", loss.item())
+            experiment_logger.log_layer_norms(
+                step,
+                "train",
+                transformer.last_layer_output_norms,
+            )
 
         if step % log_validation_loss_every == 0:
             get_validation_loss(config, transformer, token_positions, experiment_logger, step)
