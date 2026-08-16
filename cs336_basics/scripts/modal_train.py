@@ -10,7 +10,7 @@ image = (
     .uv_sync()
     .add_local_python_source("cs336_basics")
     .add_local_file(
-        "cs336_basics/scripts/configs/tinystories_b200_smoke.toml",
+        "cs336_basics/scripts/configs/tinystories_b200_training_config.toml",
         remote_path="/root/config.toml",
     )
 )

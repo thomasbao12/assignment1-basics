@@ -21,8 +21,8 @@ weight_decay = 0.01
 max_grad_norm = 1.0
 
 [training]
-batch_size = 128
-max_iters = 10000
+batch_size = 8
+max_iters = 8000
 log_training_loss_every = 10
 log_validation_loss_every = 100
 
