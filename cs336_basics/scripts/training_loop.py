@@ -91,8 +91,8 @@ def main():
     # ----------------
     epoch_time = int(time.time())
     
-    logging_dir = Path(f"logging/{epoch_time}")
-    logging_dir.mkdir()
+    logging_dir = Path(config["logging"]["dir"])
+    logging_dir.mkdir(exist_ok=True)
     shutil.copy(args.config, logging_dir)
 
     experiment_logger = ExperimentLogger(logging_dir)
@@ -217,6 +217,7 @@ def main():
     output_file = checkpoint_config.get("output_file")
     if output_file is not None:
         print(f"saving model checkpoint to {output_file}")
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
         utils.run_save_checkpoint(transformer, opt, max_iters - 1, output_file)
 
 
