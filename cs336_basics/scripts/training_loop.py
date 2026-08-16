@@ -90,7 +90,7 @@ def main():
     # Logging
     # ----------------
     epoch_time = int(time.time())
-    
+
     logging_dir = Path(config["logging"]["dir"])
     logging_dir.mkdir(exist_ok=True)
     shutil.copy(args.config, logging_dir)
@@ -168,12 +168,34 @@ def main():
         utils.run_load_checkpoint(input_file, transformer, opt)
 
     # ----------------
+    # Learning Rate Scheduling
+    # ----------------
+
+    lr_schedule_config = config["lr_schedule"]
+
+    warmup_iters = lr_schedule_config["warmup_iters"]
+    cosine_cycle_iters = lr_schedule_config["cosine_cycle_iters"]
+    min_learning_rate = lr_schedule_config["min_learning_rate"]
+    max_learning_rate = optimizer_config["learning_rate"]
+
+    # ----------------
     # Training
     # ----------------
 
     transformer.train()
 
     for step in range(max_iters):
+        lr = utils.run_get_lr_cosine_schedule(
+                step,
+                max_learning_rate,
+                min_learning_rate,
+                warmup_iters=warmup_iters,
+                cosine_cycle_iters=cosine_cycle_iters,
+            )
+    
+        for param_group in opt.param_groups:
+            param_group["lr"] = lr
+
         input_seq, output_seq = utils.run_get_batch(
                 tokenized_corpus_train,
                 batch_size,

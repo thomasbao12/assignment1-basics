@@ -22,7 +22,7 @@ max_grad_norm = 1.0
 
 [training]
 batch_size = 128
-max_iters = 10000
+max_iters = 1000
 log_training_loss_every = 10
 log_validation_loss_every = 100
 

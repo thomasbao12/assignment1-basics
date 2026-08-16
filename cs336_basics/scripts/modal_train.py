@@ -20,7 +20,7 @@ image = (
     image=image,
     gpu="B200",
     volumes={"/cs336": data_volume},
-    timeout=300,
+    timeout=60 * 60,
 )
 def train():
     subprocess.run(
