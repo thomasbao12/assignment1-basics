@@ -13,7 +13,6 @@ from torch import Tensor
 from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
-from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.transformer_block import TransformerBlock
 import cs336_basics.utils as utils
@@ -46,7 +45,6 @@ class TransformerLM(torch.nn.Module):
                 d_model, num_heads, d_ff, context_length, rope_theta, device = device, dtype=dtype
             ) for layer in range(num_layers)
         ])
-        self.ln_final = RMSNorm(d_model, device = device, dtype=dtype)
         self.lm_head = Linear(d_model, vocab_size, device = device, dtype=dtype)
         
     
@@ -55,5 +53,4 @@ class TransformerLM(torch.nn.Module):
         layer_input = embedding
         for layer in self.layers:
             layer_input = layer.forward(layer_input, token_positions)
-        last_norm = self.ln_final.forward(layer_input)
-        return self.lm_head.forward(last_norm)
+        return self.lm_head.forward(layer_input)
