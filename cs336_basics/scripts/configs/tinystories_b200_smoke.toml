@@ -15,14 +15,14 @@ device = "cuda"
 [optimizer]
 learning_rate = 0.001
 beta1 = 0.9
-beta2 = 0.999
+beta2 = 0.995
 eps = 1e-8
 weight_decay = 0.01
 max_grad_norm = 1.0
 
 [training]
 batch_size = 128
-max_iters = 100 #10000
+max_iters = 501 #10000
 log_training_loss_every = 10
 log_validation_loss_every = 100
 

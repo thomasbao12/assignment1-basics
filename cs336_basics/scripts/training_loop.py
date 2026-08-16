@@ -79,7 +79,7 @@ def get_validation_loss(config, transformer, token_positions, experiment_logger,
         )
 
     print(f"validation loss: {loss.item():.4f}")
-    experiment_logger.log(step, "valid", loss)
+    experiment_logger.log(step, "valid", loss.item())
 
 
 def main():
@@ -96,7 +96,6 @@ def main():
     shutil.copy(args.config, logging_dir)
 
     experiment_logger = ExperimentLogger(logging_dir)
-    experiment_logger.log(0, "train", 3.14159)
     
     # ----------------
     # Data
