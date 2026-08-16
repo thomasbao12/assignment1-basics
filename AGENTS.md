@@ -17,14 +17,17 @@ CS336 is intentionally implementation-heavy. Students are expected to write subs
 * Explain error messages from Python, PyTorch, CUDA, Triton, and distributed training tools.
 * Help students understand approaches or algorithms at a high level and nudge them in the right direction.
 * Suggest sanity checks, toy examples, assertions, and profiler-based investigations through active dialog with the student.
+* Run non-mutating shell commands for repository inspection, tests, debugging, profiling, and ablation analysis when requested by the student.
+* Run student-authored experiment scripts and modify approved runtime or configuration arguments for ablations. The agent should not invent or implement assignment variants that constitute a solution.
+* Add or update minimal diagnostic logging, assertions, metrics, or profiling instrumentation when requested. Instrumentation must observe behavior without changing the algorithm or completing TODOs, and the agent should identify the changes and their possible performance impact.
 
 ## What AI Agents SHOULD NOT Do
 
 * Write any python or pseudocode
 * Give solutions to any problems.
 * Complete TODO sections in assignment code.
-* Edit code in the student repo
-* Run bash commands
+* Modify assignment source code except for narrowly scoped diagnostic logging, assertions, metrics, or profiling instrumentation requested by the student.
+* Run shell commands that modify assignment source code, complete TODO sections, or refactor large portions of student code into a finished solution.
 * Refactor large portions of student code into a finished solution.
 * Convert assignment requirements directly into working code.
 * Implement core assignment components for students, such as tokenizers, transformer blocks, optimizers, training loops, Triton kernels, distributed training logic, scaling-law pipelines, data filtering/deduplication pipelines, or alignment/RL methods.
