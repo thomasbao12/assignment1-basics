@@ -19,6 +19,7 @@ class Attention(torch.nn.Module):
         dtype: torch.dtype | None = None,
     ):
         super().__init__()
+        self.device = device
         self.num_heads = num_heads
         self.q_proj = Linear(d_model, d_model, dtype = dtype, device = device)
         self.k_proj = Linear(d_model, d_model, dtype = dtype, device = device)
@@ -72,9 +73,11 @@ class Attention(torch.nn.Module):
                 multihead_k,
                 token_positions_with_head_dimension,
             )
-            multihead_attention = utils.run_scaled_dot_product_attention(rotated_multihead_q, rotated_multihead_k, multihead_v)
+            multihead_attention = utils.run_scaled_dot_product_attention(
+                rotated_multihead_q, rotated_multihead_k, multihead_v, device=self.device)
         else:
-            multihead_attention = utils.run_scaled_dot_product_attention(multihead_q, multihead_k, multihead_v)
+            multihead_attention = utils.run_scaled_dot_product_attention(
+                multihead_q, multihead_k, multihead_v, device=self.device)
         
         
         rearranged_multihead_attention = einops.rearrange(

@@ -21,13 +21,10 @@ weight_decay = 0.01
 max_grad_norm = 1.0
 
 [training]
-batch_size = 4
-max_iters = 1000 #10000
+batch_size = 128
+max_iters = 100 #10000
 log_training_loss_every = 10
 log_validation_loss_every = 100
-
-[logging]
-dir = "logging"
 
 [lr_schedule]
 warmup_iters = 100

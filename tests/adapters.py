@@ -595,13 +595,7 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    if it < warmup_iters:
-        return it / warmup_iters * max_learning_rate
-    elif it <= cosine_cycle_iters:
-        radians = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters) * math.pi
-        return min_learning_rate + 0.5 * (1 + math.cos(radians)) * (max_learning_rate - min_learning_rate)
-    else:
-        return min_learning_rate
+    return utils.run_get_lr_cosine_schedule(it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters)
 
 
 def run_save_checkpoint(

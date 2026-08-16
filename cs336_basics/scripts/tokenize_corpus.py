@@ -4,22 +4,13 @@ import numpy as np
 import tomllib
 import torch
 
+from cs336_basics.iter_parts import iter_parts
 from cs336_basics.tokenizer import Tokenizer
-from cs336_basics.train_bpe import train_bpe
 from pathlib import Path
 
 def load_config(config_path: str) -> dict:
     with open(config_path, "rb") as f:
         return tomllib.load(f)
-
-def encode_to_file(tokenizer, filepath):
-    with open(filepath) as f:
-        text = f.read()
-    tokens = tokenizer.encode(text)
-    tokens_array = np.array(tokens)
-     
-    output_path = Path(filepath).with_suffix(".tokens")
-    np.save(output_path, tokens_array)
 
 SPECIAL_TOKENS = list(["<|endoftext|>"])
 
@@ -29,12 +20,11 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config_filepath)
-    corpus_train_filepath = config["corpus_train_filepath"]
-    vocab, merges = train_bpe(
-        corpus_train_filepath,
-        1000,
-        SPECIAL_TOKENS,
-    )
+
+    with open(config["merges_pickle"], "rb") as f:
+        merges = pickle.load(f)
+    with open(config["vocab_pickle"], "rb") as f:
+        vocab = pickle.load(f)
 
     tokenizer = Tokenizer(
         vocab,
@@ -42,11 +32,13 @@ def main():
         SPECIAL_TOKENS,
     )
 
-    with open(config["tokenizer_filepath"], "wb") as f:
-        pickle.dump(tokenizer, f)
+    parts = iter_parts(config["corpus_filepath"], SPECIAL_TOKENS)
+    tokens = tokenizer.encode_from_iterable_parts(parts)
+    tokens_array = np.fromiter(tokens, dtype = np.uint16)
+    print(len(tokens_array))    
 
-    encode_to_file(tokenizer, corpus_train_filepath)
-    encode_to_file(tokenizer, config["corpus_valid_filepath"])
+    output_path = Path(config["corpus_filepath"]).with_suffix(".tokens")
+    np.save(output_path, tokens_array)
     
 
 if __name__ == "__main__":

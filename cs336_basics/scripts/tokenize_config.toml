@@ -1,3 +1,9 @@
-corpus_train_filepath = "data/tiny_stories_train_smoke_test.txt"
-corpus_valid_filepath = "data/tiny_stories_valid_smoke_test.txt"
-tokenizer_filepath = "data/tokenizer.pkl"
+corpus_filepath = "data/owt_train.txt"
+#corpus_filepath = "data/owt_valid.txt"
+merges_pickle = "data/owt/merges.pkl"
+vocab_pickle = "data/owt/vocab.pkl"
+
+#corpus_filepath = "data/TinyStoriesV2-GPT4-train.txt"
+#corpus_filepath = "data/TinyStoriesV2-GPT4-valid.txt"
+#merges_pickle = "data/tiny-stories/merges.pkl"
+#vocab_pickle = "data/tiny-stories/vocab.pkl"

@@ -2,6 +2,7 @@ from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 import einops
+import math
 import numpy as np
 import numpy.typing as npt
 import os
@@ -33,11 +34,11 @@ def run_get_batch(
     input_sequences = torch.stack([
         torch.from_numpy(dataset[i : i + context_length])
         for i in indices
-    ]).to(device)
+    ]).to(device).to(torch.int)
     output_sequences = torch.stack([
         torch.from_numpy(dataset[i + 1 : i + context_length + 1])
         for i in indices
-    ]).to(device)
+    ]).to(device).to(torch.int)
     return (input_sequences, output_sequences)
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int, temp: float = 1) -> Float[Tensor, " ..."]:
@@ -154,7 +155,7 @@ def load_model_checkpoint(
     src: str | os.PathLike | BinaryIO | IO[bytes],
     model: torch.nn.Module
 ):
-    obj = torch.load(src)
+    obj = torch.load(src, map_location=torch.device('cpu'))
     model.load_state_dict(obj["model_state_dict"])
 
 def run_load_checkpoint(
@@ -175,7 +176,7 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    obj = torch.load(src)
+    obj = torch.load(src, map_location=torch.device('cpu'))
     load_model_checkpoint(src, model)
     optimizer.load_state_dict(obj["optimizer_state_dict"])
     return obj["iteration"]
@@ -200,3 +201,36 @@ def sample_top_p(
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
     return in_features * torch.sigmoid(in_features)
+
+def run_get_lr_cosine_schedule(
+    it: int,
+    max_learning_rate: float,
+    min_learning_rate: float,
+    warmup_iters: int,
+    cosine_cycle_iters: int,
+):
+    """
+    Given the parameters of a cosine learning rate decay schedule (with linear
+    warmup) and an iteration number, return the learning rate at the given
+    iteration under the specified schedule.
+
+    Args:
+        it (int): Iteration number to get learning rate for.
+        max_learning_rate (float): alpha_max, the maximum learning rate for
+            cosine learning rate schedule (with warmup).
+        min_learning_rate (float): alpha_min, the minimum / final learning rate for
+            the cosine learning rate schedule (with warmup).
+        warmup_iters (int): T_w, the number of iterations to linearly warm-up
+            the learning rate.
+        cosine_cycle_iters (int): T_c, the number of cosine annealing iterations.
+
+    Returns:
+        Learning rate at the given iteration under the specified schedule.
+    """
+    if it < warmup_iters:
+        return it / warmup_iters * max_learning_rate
+    elif it <= cosine_cycle_iters:
+        radians = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters) * math.pi
+        return min_learning_rate + 0.5 * (1 + math.cos(radians)) * (max_learning_rate - min_learning_rate)
+    else:
+        return min_learning_rate

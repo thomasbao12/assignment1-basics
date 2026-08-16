@@ -1,6 +1,6 @@
 [data]
-train_file = "data/TinyStoriesV2-GPT4-train.tokens.npy"
-validation_file = "data/TinyStoriesV2-GPT4-valid.tokens.npy"
+train_file = "/cs336/assignment1/data/TinyStoriesV2-GPT4-train.tokens.npy"
+validation_file = "/cs336/assignment1/data/TinyStoriesV2-GPT4-valid.tokens.npy"
 
 [model]
 vocab_size = 10000
@@ -10,10 +10,10 @@ d_ff = 1344
 rope_theta = 10000.0
 num_layers = 4
 num_heads = 16
-device = "mps"
+device = "cuda"
 
 [optimizer]
-learning_rate = 0.001
+learning_rate = 0.003
 beta1 = 0.9
 beta2 = 0.999
 eps = 1e-8
@@ -21,13 +21,10 @@ weight_decay = 0.01
 max_grad_norm = 1.0
 
 [training]
-batch_size = 4
-max_iters = 1000 #10000
+batch_size = 128
+max_iters = 901 #10000
 log_training_loss_every = 10
 log_validation_loss_every = 100
-
-[logging]
-dir = "logging"
 
 [lr_schedule]
 warmup_iters = 100
@@ -35,5 +32,7 @@ cosine_cycle_iters = 1000
 min_learning_rate = 0.0001
 
 [checkpoint]
-#input_file = "data/model/checkpoint"
-output_file = "data/model/checkpoint"
+output_file = "/cs336/assignment1/data/model/checkpoint"
+
+[logging]
+dir = "/cs336/assignment1/logging"

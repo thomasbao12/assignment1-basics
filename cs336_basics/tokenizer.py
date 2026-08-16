@@ -4,73 +4,33 @@ from collections.abc import Iterable, Iterator
 
 from dataclasses import dataclass
 from typing import Literal
-
-@dataclass(frozen=True)
-class NormalPart:
-    text: str
-
-@dataclass(frozen=True)
-class SpecialPart:
-    text: str
-
-Part = NormalPart | SpecialPart
-
-def pretokenize(text: str) -> list[str]:
-        PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-        return regex.findall(PAT, text)
-
-def split_into_parts_and_pretokenize(
-    text: str, 
-    special_tokens: list[str] | None = None
-) -> list[Part]:
-    parts = [text]
-    if special_tokens is None:
-        special_tokens = set()
-    if len(special_tokens) > 0:
-        # we want to match the longest special if they overlap
-        special_tokens_sorted = sorted(special_tokens, key=len, reverse=True)
-        specials_regex = "(" + \
-            "|".join(regex.escape(tok) for tok in special_tokens_sorted) + \
-        ")"
-        parts = regex.split(specials_regex, text)
-    tokens = []
-    for part in parts:
-        if part in special_tokens or set():
-            tokens.append(SpecialPart(part))
-        elif not part:
-            continue
-        else:
-            for piece in pretokenize(part):
-                tokens.append(NormalPart(piece))
-    return tokens
-
-def encode_part_into_bytes(
-    part: Part
-) -> list[bytes]:
-    match part:
-        case NormalPart(text = s):
-            return [bytes([byte]) for byte in s.encode("utf-8")]
-        case SpecialPart(text = s):
-            b = s.encode("utf-8")
-            if isinstance(b, bytes):
-                return [b]
-            else:
-                return [bytes([b])]
+from cs336_basics.iter_parts import (
+    NormalPart, SpecialPart, Part, iter_parts_from_text
+)
+            
 def _merge_pair(
-    list_of_bytes: list[bytes],
-    pair: tuple[bytes, bytes]    
+    tokens: list[bytes],
+    pair: tuple[bytes, bytes],
 ) -> list[bytes]:
-    for i in range(len(list_of_bytes) - 1):
-        x, y = list_of_bytes[i], list_of_bytes[i + 1]
-        if (x, y) == pair:
-            return list_of_bytes[:i] + [
-                b''.join([
-                    list_of_bytes[i], 
-                    list_of_bytes[i + 1]
-                ])
-            ] + _merge_pair(list_of_bytes[i + 2:], pair)
+    x, y = pair
+    merged = x + y
 
-    return list_of_bytes
+    result = []
+    i = 0
+
+    while i < len(tokens):
+        if (
+            i + 1 < len(tokens)
+            and tokens[i] == x
+            and tokens[i + 1] == y
+        ):
+            result.append(merged)
+            i += 2
+        else:
+            result.append(tokens[i])
+            i += 1
+
+    return result
 
 def merge_pair(
     list_of_bytes: list[bytes],
@@ -114,7 +74,9 @@ class Tokenizer:
         self.special_bytes = set([
             token.encode("UTF-8") for token in self.special_tokens
         ])
-            
+
+        self._encode_cache: dict[bytes, tuple[int, ...]] = {}
+    
     
     def from_files(
         cls, 
@@ -124,36 +86,54 @@ class Tokenizer:
     ):
         raise NotImplementedError()
     
-    def _encode_bytes(self, list_of_bytes: list[bytes]) -> list[int]:
-        parts = list_of_bytes
+    def encode_bytes(self, bytestring: bytes) -> list[int]:
+        cached = self._encode_cache.get(bytestring)
+        if cached is not None:
+            return cached
+
+        parts = [bytes([b]) for b in bytestring]
+
         while len(parts) >= 2:
             parts, merged = merge_pair(
                 parts,
-                self.merge_pairs_to_ranks
+                self.merge_pairs_to_ranks,
             )
             if merged is None:
                 break
-            
-        
-        ids = list()
-        for b in parts:
-            ids.append(
-                self.bytes_to_id[b]
-            )
+
+        ids = [self.bytes_to_id[b] for b in parts]
+        self._encode_cache[bytestring] = tuple(ids)
         return ids
 
 
     def encode(self, text: str) -> list[int]:
-        parts = split_into_parts_and_pretokenize(text, self.special_tokens)
         ids: list[int] = []
-        for part in parts:
-            list_of_bytes = encode_part_into_bytes(part)
-            ids += self._encode_bytes(list_of_bytes)
+
+        for part in iter_parts_from_text(
+            text,
+            self.special_tokens,
+        ):
+            match part:
+                case NormalPart(data=data):
+                    ids.extend(
+                        self.encode_bytes(
+                            data
+                        )
+                    )
+
+                case SpecialPart(data=data):
+                    ids.append(
+                        self.bytes_to_id[data]
+                    )
         return ids
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         for text in iterable:
             yield from self.encode(text)
+
+    def encode_from_iterable_parts(self, iterable: Iterable[Part]) -> Iterator[int]:
+        for part in iterable:
+            yield from self.encode_bytes(part.data)
     
     def decode(self, ids: list[int]) -> str:
         bytes = b""
