@@ -13,7 +13,7 @@ num_heads = 16
 device = "cuda"
 
 [optimizer]
-learning_rate = 0.001
+learning_rate = 0.0003
 beta1 = 0.9
 beta2 = 0.995
 eps = 1e-8
@@ -22,7 +22,7 @@ max_grad_norm = 1.0
 
 [training]
 batch_size = 128
-max_iters = 10000
+max_iters = 1000
 log_training_loss_every = 10
 log_validation_loss_every = 100
 
@@ -32,7 +32,7 @@ cosine_cycle_iters = 10000
 min_learning_rate = 0.0001
 
 [checkpoint]
-output_file = "/cs336/assignment1/data/model/checkpoint"
+output_file = "/cs336/assignment1/data/model/rmsnorm_no_norm_lr3e-4_1k"
 
 [logging]
-dir = "/cs336/assignment1/logging"
+dir = "/cs336/assignment1/logging/rmsnorm_no_norm_lr3e-4_1k"
