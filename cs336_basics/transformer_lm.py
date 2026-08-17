@@ -46,14 +46,19 @@ class TransformerLM(torch.nn.Module):
                 d_model, num_heads, d_ff, context_length, rope_theta, device = device, dtype=dtype
             ) for layer in range(num_layers)
         ])
-        self.ln_final = RMSNorm(d_model, device = device, dtype=dtype)
         self.lm_head = Linear(d_model, vocab_size, device = device, dtype=dtype)
+        self.collect_layer_norms = False
+        self.last_layer_output_norms: list[float] = []
         
     
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         embedding = self.token_embeddings.forward(x)
         layer_input = embedding
+        self.last_layer_output_norms = []
         for layer in self.layers:
             layer_input = layer.forward(layer_input, token_positions)
-        last_norm = self.ln_final.forward(layer_input)
-        return self.lm_head.forward(last_norm)
+            if self.collect_layer_norms:
+                self.last_layer_output_norms.append(
+                    torch.linalg.vector_norm(layer_input.detach(), dim=-1).mean().item()
+                )
+        return self.lm_head.forward(layer_input)

@@ -36,15 +36,13 @@ class TransformerBlock(torch.nn.Module):
         in_features: Float[Tensor, " ... sequence_length d_model"],
         token_positions: Int[Tensor, " ... sequence_length"],
     ) -> Float[Tensor, " ... sequence_length d_model"]:
-        rms_norm1 = self.ln1.forward(in_features)
+        
         mha = self.attn.forward(
-            rms_norm1,
+            in_features,
             token_positions
         )
-        rms_norm2 = self.ln2.forward(
-            in_features + mha
-        )
+        rms_norm1 = self.ln1.forward(in_features + mha)
         ff = self.ffn.forward(
-            rms_norm2
+            rms_norm1
         )
-        return in_features + mha + ff
+        return self.ln2.forward(in_features + mha + ff)

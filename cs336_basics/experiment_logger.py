@@ -15,6 +15,11 @@ class ExperimentLogger:
             writer = csv.writer(f)
             writer.writerow(["step", "wallclock_seconds", "split", "loss"])
 
+        self.activation_norms_path = self.output_dir / "activation_norms.csv"
+        with open(self.activation_norms_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["step", "wallclock_seconds", "split", "layer", "mean_l2_norm"])
+
     def log(self, step: int, split: str, loss: float):
         elapsed = time.perf_counter() - self.start_time
 
@@ -26,3 +31,15 @@ class ExperimentLogger:
                 split,
                 loss,
             ])
+
+    def log_layer_norms(self, step: int, split: str, layer_norms: list[float]):
+        elapsed = time.perf_counter() - self.start_time
+
+        with open(self.activation_norms_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(
+                [
+                    [step, elapsed, split, layer, norm]
+                    for layer, norm in enumerate(layer_norms)
+                ]
+            )
