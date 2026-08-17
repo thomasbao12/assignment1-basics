@@ -88,7 +88,9 @@ a definitive long-run performance ranking.
 
 ## Learning Curves
 
-The validation-loss comparison is shown in
+The combined validation- and training-loss comparison is shown in
+[no_rms_norm_loss_curves.svg](no_rms_norm_loss_curves.svg). The validation-only
+view is also available in
 [no_rms_norm_learning_curves.svg](no_rms_norm_learning_curves.svg).
 
 ## Conclusion
