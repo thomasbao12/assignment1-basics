@@ -86,6 +86,11 @@ maximum norm of `1.0` and did not use an explicitly fixed random seed, so the
 results should be interpreted as an early optimization comparison rather than
 a definitive long-run performance ranking.
 
+## Learning Curves
+
+The validation-loss comparison is shown in
+[no_rms_norm_learning_curves.svg](no_rms_norm_learning_curves.svg).
+
 ## Conclusion
 
 Removing RMSNorm did not prevent the Transformer from learning, but it made the
