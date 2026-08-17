@@ -13,6 +13,7 @@ from torch import Tensor
 from cs336_basics.rope import RoPE
 from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
+from cs336_basics.rmsnorm import RMSNorm
 from cs336_basics.swiglu import SwiGLU
 from cs336_basics.transformer_block import TransformerBlock
 import cs336_basics.utils as utils
