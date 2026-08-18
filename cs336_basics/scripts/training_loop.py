@@ -35,7 +35,7 @@ def init_transformer(model_config: dict) -> TransformerLM:
     num_layers = model_config["num_layers"]
     num_heads = model_config["num_heads"]
     d_ff = model_config["d_ff"]
-    rope_theta = model_config["rope_theta"]
+    rope_theta = model_config.get("rope_theta", None)
     device = model_config.get("device", None)
     return TransformerLM(
         vocab_size=vocab_size,

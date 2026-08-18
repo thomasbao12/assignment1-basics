@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="580" viewBox="0 0 920 580" role="img" aria-labelledby="title desc">
+  <title id="title">RoPE versus no-RoPE validation loss</title>
+  <desc id="desc">Validation loss over 5,000 training steps for matched RoPE and no-RoPE Transformer runs.</desc>
+  <rect width="920" height="580" fill="#ffffff"/>
+  <text x="80" y="30" font-family="Arial, sans-serif" font-size="22" fill="#1f2937">RoPE Ablation: Validation Loss</text>
+  <text x="80" y="51" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">Matched 5k-step runs, learning rate 1e-3</text>
+
+  <g stroke="#e5e7eb" stroke-width="1">
+    <line x1="80" y1="80" x2="840" y2="80"/>
+    <line x1="80" y1="188" x2="840" y2="188"/>
+    <line x1="80" y1="295" x2="840" y2="295"/>
+    <line x1="80" y1="403" x2="840" y2="403"/>
+    <line x1="80" y1="510" x2="840" y2="510"/>
+    <line x1="80" y1="80" x2="80" y2="510"/>
+    <line x1="232" y1="80" x2="232" y2="510"/>
+    <line x1="384" y1="80" x2="384" y2="510"/>
+    <line x1="536" y1="80" x2="536" y2="510"/>
+    <line x1="688" y1="80" x2="688" y2="510"/>
+    <line x1="840" y1="80" x2="840" y2="510"/>
+  </g>
+
+  <g font-family="Arial, sans-serif" font-size="12" fill="#4b5563">
+    <text x="52" y="84">9.5</text>
+    <text x="52" y="192">7.5</text>
+    <text x="52" y="299">5.5</text>
+    <text x="52" y="407">3.5</text>
+    <text x="52" y="514">1.5</text>
+    <text x="76" y="532">0</text>
+    <text x="224" y="532">1k</text>
+    <text x="374" y="532">2k</text>
+    <text x="526" y="532">3k</text>
+    <text x="678" y="532">4k</text>
+    <text x="828" y="532">5k</text>
+    <text x="438" y="558">Training step</text>
+    <text transform="translate(18 360) rotate(-90)">Validation loss</text>
+  </g>
+
+  <polyline fill="none" stroke="#c2410c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
+    points="80.0,92.9 95.2,396.9 110.4,434.8 125.6,449.0 140.8,457.3 156.0,465.0 171.2,473.1 186.4,470.2 201.6,475.0 216.8,478.1 232.0,476.6 247.2,479.5 262.4,481.7 277.6,482.9 292.8,486.7 308.0,483.1 323.2,490.2 338.4,485.9 353.6,483.6 368.8,485.3 384.0,488.1 399.2,486.3 414.4,487.8 429.6,489.5 444.8,491.6 460.0,492.5 475.2,494.0 490.4,492.4 505.6,495.3 520.8,492.5 536.0,497.1 551.2,495.8 566.4,496.9 581.6,494.0 596.8,494.9 612.0,493.8 627.2,497.3 642.4,497.2 657.6,495.1 672.8,499.4 688.0,497.6 703.2,495.1 718.4,496.8 733.6,498.3 748.8,498.3 764.0,500.2 779.2,500.0 794.4,498.1 809.6,499.7 824.8,497.0"/>
+  <polyline fill="none" stroke="#176b87" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
+    points="80.0,90.8 95.2,416.4 110.4,449.2 125.6,464.0 140.8,467.8 156.0,474.1 171.2,476.2 186.4,478.0 201.6,486.3 216.8,483.5 232.0,484.0 247.2,488.9 262.4,486.8 277.6,486.7 292.8,489.0 308.0,493.9 323.2,491.4 338.4,492.6 353.6,490.8 368.8,492.8 384.0,493.0 399.2,495.4 414.4,494.2 429.6,494.7 444.8,497.4 460.0,495.1 475.2,497.2 490.4,496.7 505.6,498.3 520.8,497.0 536.0,497.4 551.2,500.5 566.4,499.2 581.6,496.9 596.8,500.5 612.0,499.1 627.2,499.6 642.4,499.8 657.6,500.2 672.8,501.5 688.0,500.4 703.2,500.6 718.4,501.8 733.6,502.4 748.8,502.8 764.0,502.3 779.2,500.4 794.4,500.2 809.6,503.1 824.8,502.1"/>
+
+  <g font-family="Arial, sans-serif" font-size="13" fill="#1f2937">
+    <line x1="610" y1="105" x2="640" y2="105" stroke="#c2410c" stroke-width="3"/>
+    <text x="650" y="109">No RoPE</text>
+    <line x1="610" y1="130" x2="640" y2="130" stroke="#176b87" stroke-width="3"/>
+    <text x="650" y="134">RoPE</text>
+  </g>
+  <text x="80" y="575" font-family="Arial, sans-serif" font-size="12" fill="#6b7280">Validation checkpoints were recorded every 100 steps.</text>
+</svg>
