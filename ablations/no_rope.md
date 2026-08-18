@@ -60,3 +60,6 @@ The longer run provides evidence for a modest RoPE advantage, especially late
 in training, but not for a qualitative failure of the no-RoPE model. Because
 the runs did not use an explicitly fixed random seed, the exact differences
 should not be treated as a precise estimate of RoPE's effect.
+
+The validation-loss comparison is shown in
+[no_rope_vs_rope_5k_validation.svg](no_rope_vs_rope_5k_validation.svg).
