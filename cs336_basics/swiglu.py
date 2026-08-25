@@ -16,10 +16,8 @@ class SwiGLU(torch.nn.Module):
         super().__init__()
         self.w1 = Linear(d_model, d_ff, device, dtype)
         self.w2 = Linear(d_ff, d_model, device, dtype)
-        self.w3 = Linear(d_model, d_ff, device, dtype)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         w1_x = self.w1.forward(x)
         silu = utils.run_silu(w1_x)
-        w3_x = self.w3.forward(x)
-        return self.w2.forward(silu * w3_x)
+        return self.w2.forward(silu)
